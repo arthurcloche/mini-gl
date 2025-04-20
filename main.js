@@ -1,12 +1,34 @@
 import miniGL from "./miniGL.js";
-
-document.addEventListener("DOMContentLoaded", () => {
+(async () => {
   const gl = new miniGL("glCanvas");
 
   const blankTexture = gl.canvasTexture((ctx, width, height) => {
     ctx.fillStyle = "rgba(0,0,0,0)";
     ctx.fillRect(0, 0, width, height);
   });
+
+  // Create a dynamic canvas texture
+  const myTexture = gl.canvasTexture(
+    // Initial draw function
+    (ctx, width, height) => {
+      ctx.fillStyle = "blue";
+      ctx.fillRect(0, 0, width, height);
+    },
+    {
+      // Update function that will be called each frame
+      update: (ctx, width, height, time) => {
+        ctx.fillStyle = "blue";
+        ctx.fillRect(0, 0, width, height);
+
+        // Draw something that changes over time
+        ctx.fillStyle = "white";
+        const x = (Math.sin(time * 0.01) * width) / 2 + width / 2;
+        ctx.beginPath();
+        ctx.arc(x, height / 2, 20, 0, Math.PI * 2);
+        ctx.fill();
+      },
+    }
+  );
 
   const mouseTrailPass = gl.createPingPongPass({
     fragmentShader: `#version 300 es
@@ -63,15 +85,17 @@ document.addEventListener("DOMContentLoaded", () => {
     precision highp float;
   
     in vec2 vTexCoord;
-    uniform sampler2D uTexture;  // The flowmap from ping-pong pass
+    uniform sampler2D uTexture;    // The flowmap from ping-pong pass
+    uniform sampler2D uCanvasTexture; // Our dynamic canvas texture
     uniform vec2 uResolution;
     uniform float uTime;
     
     out vec4 fragColor;
     
     void main() {
-      // Sample the flowmap
+      // Sample the flowmap and canvas texture
       vec4 flowMap = texture(uTexture, vTexCoord);
+      vec4 canvasColor = texture(uCanvasTexture, vTexCoord);
       
       // Create a colorful visualization of the trail
       vec3 trailColor = vec3(0.0);
@@ -93,17 +117,25 @@ document.addEventListener("DOMContentLoaded", () => {
       vec3 bgColor = vec3(0.05);
       vec3 finalColor = mix(bgColor, trailColor, intensity * 1.2);
       
-      fragColor = vec4(finalColor, 1.0);
+      // Layer the mouse trail on top of the canvas texture
+      // Composite the trail over the canvas texture
+      fragColor = vec4(mix(canvasColor.rgb, finalColor, intensity * 0.8), 1.0);
     }`,
+    uniforms: {
+      uCanvasTexture: myTexture,
+    },
   });
 
-  function render() {
+  // Setup render loop
+  const render = () => {
     gl.render();
     requestAnimationFrame(render);
-  }
-  render();
-  window.addEventListener("resize", () => {
-    gl.resize();
-  });
+  };
+
+  // Handle window resizing
+  window.addEventListener("resize", () => gl.resize());
+
+  // Initial setup
   gl.resize();
-});
+  render();
+})();

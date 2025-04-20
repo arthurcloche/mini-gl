@@ -150,7 +150,47 @@ class miniGL {
       this.gl.generateMipmap(this.gl.TEXTURE_2D);
     }
 
-    return { texture, width, height };
+    // Store update callback if provided
+    const result = { texture, width, height };
+
+    // If an update function is provided, store it with the canvas for dynamic updates
+    if (options.update && typeof options.update === "function") {
+      result.canvas = tempCanvas;
+      result.context = ctx;
+      result.update = (time) => {
+        ctx.clearRect(0, 0, width, height);
+        ctx.save();
+        ctx.translate(width / 2, height / 2);
+        ctx.scale(1, -1);
+        ctx.translate(-width / 2, -height / 2);
+
+        // Call the update function with context, dimensions, and time
+        options.update(ctx, width, height, time);
+
+        ctx.restore();
+
+        // Update the texture
+        this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+        this.gl.texImage2D(
+          this.gl.TEXTURE_2D,
+          0,
+          this.gl.RGBA,
+          this.gl.RGBA,
+          this.gl.UNSIGNED_BYTE,
+          tempCanvas
+        );
+
+        if (options.mipmap !== false) {
+          this.gl.generateMipmap(this.gl.TEXTURE_2D);
+        }
+      };
+
+      // Add to dynamic textures list for automatic updates
+      if (!this.dynamicTextures) this.dynamicTextures = [];
+      this.dynamicTextures.push(result);
+    }
+
+    return result;
   }
 
   imageTexture(url, options = {}) {
@@ -454,6 +494,15 @@ class miniGL {
 
     if (this.passes.length === 0) return;
 
+    // Update any dynamic canvas textures
+    if (this.dynamicTextures && this.dynamicTextures.length > 0) {
+      for (const dynamicTexture of this.dynamicTextures) {
+        if (dynamicTexture.update) {
+          dynamicTexture.update(this.clock);
+        }
+      }
+    }
+
     if (performance.now() - this.lastMouseUpdateTime > 16) {
       this.mouseVelocity.x *= 0.95;
       this.mouseVelocity.y *= 0.95;
@@ -652,7 +701,11 @@ class miniGL {
         if (len === 2) gl.uniform2fv(location, value);
         else if (len === 3) gl.uniform3fv(location, value);
         else if (len === 4) gl.uniform4fv(location, value);
-      } else if (value.texture) {
+      } else if (
+        value.texture ||
+        (value.canvas && value.width && value.height)
+      ) {
+        // Handle texture objects (including dynamic canvas textures)
         gl.activeTexture(gl.TEXTURE0 + textureUnit);
         gl.bindTexture(gl.TEXTURE_2D, value.texture);
         gl.uniform1i(location, textureUnit);
