@@ -7,20 +7,15 @@ import miniGL from "./miniGL.js";
     ctx.fillRect(0, 0, width, height);
   });
 
-  // Create a dynamic canvas texture
   const myTexture = gl.canvasTexture(
-    // Initial draw function
     (ctx, width, height) => {
       ctx.fillStyle = "blue";
       ctx.fillRect(0, 0, width, height);
     },
     {
-      // Update function that will be called each frame
       update: (ctx, width, height, time) => {
         ctx.fillStyle = "blue";
         ctx.fillRect(0, 0, width, height);
-
-        // Draw something that changes over time
         ctx.fillStyle = "white";
         const x = (Math.sin(time * 0.01) * width) / 2 + width / 2;
         ctx.beginPath();
@@ -29,6 +24,47 @@ import miniGL from "./miniGL.js";
       },
     }
   );
+
+  const flowmapPass = gl.createPingPongPass({
+    fragmentShader: `#version 300 es
+    precision highp float;
+  
+    in vec2 vTexCoord;
+    uniform sampler2D uPrevious; 
+    uniform vec2 uMouse;         
+    uniform vec2 uVelocity;      
+    uniform vec2 uResolution;    
+    uniform float uTime;         
+    
+    uniform float uFalloff;
+    uniform float uAlpha;
+    uniform float uDissipation;
+
+
+    out vec4 fragColor;
+    
+
+    const vec2 vFactor = vec2(10.);
+    void main() {
+      // Sample the previous state (equivalent to tMap)
+      vec4 color = texture(uPrevious, vTexCoord) * uDissipation;
+      vec2 cursor = vTexCoord - uMouse;
+      float aspect = uResolution.x/uResolution.y;
+      cursor.x *= aspect;
+
+      vec3 stamp = vec3(uVelocity * vFactor * vec2(1, -1), 1.0 - pow(1.0 - min(1.0, length(uVelocity * vFactor)), 3.0));
+      float falloff = smoothstep(uFalloff, 0.0, length(cursor)) * uAlpha;
+      color.rgb = mix(color.rgb, stamp, vec3(falloff));
+      
+      fragColor = color;
+    }`,
+    uniforms: {
+      uFalloff: 0.3,
+      uAlpha: 1.0,
+      uDissipation: 0.98,
+    },
+    format: gl.FLOAT,
+  });
 
   const noisePass = gl.createShaderPass({
     fragmentShader: `#version 300 es
@@ -54,54 +90,29 @@ import miniGL from "./miniGL.js";
     }`,
   });
 
-  const mouseTrailPass = gl.createPingPongPass({
-    fragmentShader: `#version 300 es
-    precision highp float;
-  
-    in vec2 vTexCoord;
-    uniform sampler2D uPrevious; // Previous frame
-    uniform vec2 uMouse;         // Current mouse position
-    uniform vec2 uResolution;    // Canvas dimensions
-    uniform float uTime;         // Time for animation
-    
-    out vec4 fragColor;
-    
-    void main() {
-      // Sample the previous frame's state
-      vec4 prevColor = texture(uPrevious, vTexCoord);
-      
-      // Slightly decay the previous frame (fade effect)
-      prevColor *= 0.97;
-      
-      // Calculate distance from current mouse position
-      float aspect = uResolution.x / uResolution.y;
-      vec2 mousePos = vec2(uMouse.x, uMouse.y);
-      vec2 st = vTexCoord;
-      
-      // Correct for aspect ratio by scaling the x coordinate
-      // This ensures our distance calculation creates a perfect circle
-      vec2 aspectCorrectedSt = vec2(st.x * aspect, st.y);
-      vec2 aspectCorrectedMouse = vec2(mousePos.x * aspect, mousePos.y);
-      
-      // Draw new particles at mouse position
-      float trail = 0.0;
-      float dist = distance(aspectCorrectedSt, aspectCorrectedMouse);
-      float mouseRadius = 0.1; // Size of the mouse trail dot
-      
-      // Draw trail only when within the radius
-      if (dist < mouseRadius) {
-        trail = smoothstep(mouseRadius, 0.0, dist);
+  const waterTexture = gl.canvasTexture((ctx, width, height) => {
+    // Create a blue water-like texture with some patterns
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, "#1E3B70");
+    gradient.addColorStop(1, "#2389DA");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Add some wave patterns
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.lineWidth = 2;
+
+    for (let i = 0; i < 10; i++) {
+      const y = i * (height / 10) + Math.sin(i * 0.7) * 20;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+
+      for (let x = 0; x < width; x += 20) {
+        ctx.lineTo(x, y + Math.sin(x * 0.02) * 10);
       }
-      
-      // Add the new trail to the previous state
-      vec4 newColor = prevColor;
-      newColor.r += trail * 0.7; // Add to the red channel (for a basic flowmap)
-      
-      // Ensure we don't go above 1.0
-      newColor = min(newColor, 1.0);
-      
-      fragColor = newColor; // Make sure we output the actual trail data
-    }`,
+
+      ctx.stroke();
+    }
   });
 
   const visualizePass = gl.createShaderPass({
@@ -112,38 +123,29 @@ import miniGL from "./miniGL.js";
     uniform sampler2D uTexture;
     uniform sampler2D uNoiseTexture;
     uniform sampler2D uMouseTrailTexture;
+    uniform sampler2D uWaterTexture;
     uniform vec2 uResolution;
     uniform float uTime;
 
     out vec4 fragColor;
 
     void main() {
-      // Sample each texture independently
-      vec4 defaultTex = texture(uTexture, vTexCoord);
-      vec4 noiseTex = texture(uNoiseTexture, vTexCoord);
-      vec4 trailTex = texture(uMouseTrailTexture, vTexCoord);
+      // Get flow data
+      vec3 flow = texture(uMouseTrailTexture, vTexCoord).rgb;
       
-      // Debug output - split screen to show all textures
-      if (vTexCoord.x < 0.33) {
-        // Left third: show noise texture
-        fragColor = noiseTex;
-      } else if (vTexCoord.x < 0.66) {
-        // Middle third: show trail texture
-        fragColor = trailTex;
-      } else {
-        // Right third: show default texture
-        fragColor = defaultTex;
-      }
+      fragColor = vec4(flow, 1.0);
     }`,
     uniforms: {
       uNoiseTexture: noisePass,
-      uMouseTrailTexture: mouseTrailPass,
+      uMouseTrailTexture: flowmapPass,
+      uWaterTexture: waterTexture,
     },
   });
 
   // Setup render loop
   const render = () => {
     gl.render();
+
     requestAnimationFrame(render);
   };
 
