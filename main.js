@@ -30,6 +30,30 @@ import miniGL from "./miniGL.js";
     }
   );
 
+  const noisePass = gl.createShaderPass({
+    fragmentShader: `#version 300 es
+    precision highp float;
+
+    in vec2 vTexCoord;
+    uniform sampler2D uTexture;
+    uniform vec2 uResolution;
+    uniform float uTime;
+
+    out vec4 fragColor;
+
+    float hash12(vec2 p){
+      vec3 p3  = fract(vec3(p.xyx) * .1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+
+    void main() {
+      // Sample the flowmap and canvas texture
+      vec2 position = gl_FragCoord.xy;
+      fragColor = vec4(vec3(hash12(position)),1.);
+    }`,
+  });
+
   const mouseTrailPass = gl.createPingPongPass({
     fragmentShader: `#version 300 es
     precision highp float;
@@ -76,53 +100,44 @@ import miniGL from "./miniGL.js";
       // Ensure we don't go above 1.0
       newColor = min(newColor, 1.0);
       
-      fragColor = newColor;
+      fragColor = newColor; // Make sure we output the actual trail data
     }`,
   });
 
   const visualizePass = gl.createShaderPass({
     fragmentShader: `#version 300 es
     precision highp float;
-  
+
     in vec2 vTexCoord;
-    uniform sampler2D uTexture;    // The flowmap from ping-pong pass
-    uniform sampler2D uCanvasTexture; // Our dynamic canvas texture
+    uniform sampler2D uTexture;
+    uniform sampler2D uNoiseTexture;
+    uniform sampler2D uMouseTrailTexture;
     uniform vec2 uResolution;
     uniform float uTime;
-    
+
     out vec4 fragColor;
-    
+
     void main() {
-      // Sample the flowmap and canvas texture
-      vec4 flowMap = texture(uTexture, vTexCoord);
-      vec4 canvasColor = texture(uCanvasTexture, vTexCoord);
+      // Sample each texture independently
+      vec4 defaultTex = texture(uTexture, vTexCoord);
+      vec4 noiseTex = texture(uNoiseTexture, vTexCoord);
+      vec4 trailTex = texture(uMouseTrailTexture, vTexCoord);
       
-      // Create a colorful visualization of the trail
-      vec3 trailColor = vec3(0.0);
-      
-      // Use the red channel for intensity
-      float intensity = flowMap.r;
-      
-      // Create rainbow-like color based on intensity and time
-      vec3 color1 = vec3(0.2, 0.5, 1.0); // Blue-ish
-      vec3 color2 = vec3(1.0, 0.4, 0.1); // Orange-ish
-      
-      trailColor = mix(color1, color2, intensity);
-      
-      // Add some shimmer effect with time
-      float shimmer = sin(uTime * 0.05 + vTexCoord.x * 10.0) * 0.5 + 0.5;
-      trailColor = mix(trailColor, vec3(shimmer), intensity * 0.3);
-      
-      // Combine with background
-      vec3 bgColor = vec3(0.05);
-      vec3 finalColor = mix(bgColor, trailColor, intensity * 1.2);
-      
-      // Layer the mouse trail on top of the canvas texture
-      // Composite the trail over the canvas texture
-      fragColor = vec4(mix(canvasColor.rgb, finalColor, intensity * 0.8), 1.0);
+      // Debug output - split screen to show all textures
+      if (vTexCoord.x < 0.33) {
+        // Left third: show noise texture
+        fragColor = noiseTex;
+      } else if (vTexCoord.x < 0.66) {
+        // Middle third: show trail texture
+        fragColor = trailTex;
+      } else {
+        // Right third: show default texture
+        fragColor = defaultTex;
+      }
     }`,
     uniforms: {
-      uCanvasTexture: myTexture,
+      uNoiseTexture: noisePass,
+      uMouseTrailTexture: mouseTrailPass,
     },
   });
 

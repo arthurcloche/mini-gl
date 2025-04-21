@@ -710,6 +710,31 @@ class miniGL {
         gl.bindTexture(gl.TEXTURE_2D, value.texture);
         gl.uniform1i(location, textureUnit);
         textureUnit++;
+      } else if (
+        // Handle pass objects: both shader passes and ping-pong passes
+        value.type === "shader" ||
+        value.type === "pingpong"
+      ) {
+        gl.activeTexture(gl.TEXTURE0 + textureUnit);
+
+        // Get the appropriate texture based on pass type
+        let textureToUse;
+        if (value.type === "shader" && value.target && value.target.texture) {
+          textureToUse = value.target.texture;
+        } else if (
+          value.type === "pingpong" &&
+          typeof value.getOutputTexture === "function"
+        ) {
+          textureToUse = value.getOutputTexture();
+        }
+
+        if (textureToUse) {
+          gl.bindTexture(gl.TEXTURE_2D, textureToUse);
+          gl.uniform1i(location, textureUnit);
+          textureUnit++;
+        } else {
+          console.warn(`Pass ${name} has no valid texture output`);
+        }
       } else if (value.x !== undefined) {
         if (value.z !== undefined) {
           if (value.w !== undefined) {
