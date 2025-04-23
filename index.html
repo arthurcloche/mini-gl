@@ -3,22 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimal WebGL Fragment Shader Pipeline</title>
+    <title>MiniGL React</title>
     <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent-color: #0066cc;
+            --accent-hover: #0077ee;
+            --button-bg: #333;
+            --button-hover-bg: #444;
+            --shadow-color: rgba(0,0,0,0.4);
+            --border-color: #333;
+        }
+        
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+                Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
         }
-        canvas {
-            display: block;
-            width: 640px;
-            height: 800px;
+        .app-container {
+            padding: 30px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--text-primary);
+        }
+        button {
+            transition: all 0.2s ease;
+            background-color: var(--button-bg);
+            color: var(--text-primary);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px var(--shadow-color);
+            background-color: var(--button-hover-bg);
+        }
+        button.active {
+            background-color: var(--accent-color);
+        }
+        button.active:hover {
+            background-color: var(--accent-hover);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: #333;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            border: none;
+        }
+        .demo-container {
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+        .param-label {
+            color: var(--text-primary);
+        }
+        .param-value {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+        .description {
+            color: var(--text-secondary);
         }
     </style>
 </head>
 <body>
-    <canvas id="glCanvas"></canvas>
-    <script type="module" src="main.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
 </body>
 </html> 

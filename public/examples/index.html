@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>miniGL Examples</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #f0f0f0;
+      color: #333;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      margin-bottom: 40px;
+      text-align: center;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      color: #1a1a1a;
+    }
+    
+    .subtitle {
+      font-size: 1.2rem;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    
+    .examples-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 30px;
+    }
+    
+    .example-card {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .example-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+    
+    .example-image {
+      height: 180px;
+      background-color: #282c34;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-size: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .example-image::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, #5851DB, #833AB4, #C13584, #E1306C, #FD1D1D);
+      opacity: 0.7;
+      z-index: 0;
+    }
+    
+    .example-image-js::before {
+      background: linear-gradient(45deg, #2C3E50, #4CA1AF);
+    }
+    
+    .example-image-react::before {
+      background: linear-gradient(45deg, #61DAFB, #2D3748);
+    }
+    
+    .example-name {
+      position: relative;
+      z-index: 1;
+    }
+    
+    .example-content {
+      padding: 20px;
+    }
+    
+    .example-title {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+      color: #333;
+    }
+    
+    .example-description {
+      color: #666;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+    }
+    
+    .example-link {
+      display: inline-block;
+      background: #4a5568;
+      color: white;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    
+    .example-link:hover {
+      background: #2d3748;
+    }
+    
+    footer {
+      margin-top: 60px;
+      text-align: center;
+      color: #666;
+      font-size: 0.9rem;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+    }
+    
+    .github-link {
+      color: #3182ce;
+      text-decoration: none;
+    }
+    
+    .github-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>miniGL Examples</h1>
+      <div class="subtitle">A collection of examples for the miniGL library</div>
+    </header>
+    
+    <div class="examples-grid">
+      <!-- Basic Setup Example -->
+      <div class="example-card">
+        <div class="example-image example-image-js">
+          <div class="example-name">JavaScript</div>
+        </div>
+        <div class="example-content">
+          <h3 class="example-title">Basic Setup</h3>
+          <p class="example-description">Learn how to set up a basic miniGL instance with JavaScript, create custom shaders, and add interactive controls.</p>
+          <a href="./setup.html" class="example-link">View Example</a>
+        </div>
+      </div>
+      
+      <!-- React Integration Example -->
+      <div class="example-card">
+        <div class="example-image example-image-react">
+          <div class="example-name">React</div>
+        </div>
+        <div class="example-content">
+          <h3 class="example-title">React Integration</h3>
+          <p class="example-description">Explore how to use miniGL in React applications with reusable components and react-based state management.</p>
+          <a href="./react-template.html" class="example-link">View Example</a>
+        </div>
+      </div>
+      
+      <!-- Effects Example -->
+      <div class="example-card">
+        <div class="example-image">
+          <div class="example-name">Effects</div>
+        </div>
+        <div class="example-content">
+          <h3 class="example-title">Shader Effects</h3>
+          <p class="example-description">Discover how to create and apply reusable shader effects like dithering, distortion, and more.</p>
+          <a href="../" class="example-link">View Example</a>
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      <p>miniGL is a minimal WebGL2 rendering pipeline for fragment shader effects. <a href="https://github.com/arthurcloche/mini-gl" class="github-link">View on GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html> 
