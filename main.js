@@ -40,7 +40,6 @@ import miniGL from "./miniGL.js";
     uniform float uAlpha;
     uniform float uDissipation;
 
-
     out vec4 fragColor;
     
 
@@ -56,11 +55,11 @@ import miniGL from "./miniGL.js";
       float falloff = smoothstep(uFalloff, 0.0, length(cursor)) * uAlpha;
       color.rgb = mix(color.rgb, stamp, vec3(falloff));
       
-      fragColor = color;
+      fragColor = vec4(color.rgb,1.);
     }`,
     uniforms: {
-      uFalloff: 0.3,
-      uAlpha: 1.0,
+      uFalloff: 0.45,
+      uAlpha: 1,
       uDissipation: 0.98,
     },
     format: gl.FLOAT,
@@ -132,27 +131,19 @@ import miniGL from "./miniGL.js";
     void main() {
       // Get flow data
       vec3 flow = texture(uMouseTrailTexture, vTexCoord).rgb;
-      
-      fragColor = vec4(flow, 1.0);
+      vec3 water = texture(uWaterTexture, vTexCoord).rgb;
+      fragColor = vec4(water, 1.0);
     }`,
     uniforms: {
       uNoiseTexture: noisePass,
       uMouseTrailTexture: flowmapPass,
-      uWaterTexture: waterTexture,
+      uWaterTexture: myTexture,
     },
   });
 
-  // Setup render loop
   const render = () => {
     gl.render();
-
     requestAnimationFrame(render);
   };
-
-  // Handle window resizing
-  window.addEventListener("resize", () => gl.resize());
-
-  // Initial setup
-  gl.resize();
   render();
 })();
