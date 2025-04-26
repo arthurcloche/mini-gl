@@ -33,6 +33,7 @@ class Node {
     this.lastUpdateTime = 0;
     this.width = options.width || gl.canvas.width;
     this.height = options.height || gl.canvas.height;
+    this._lastFrame = -1; // For per-frame visited flag
   }
 
   connect(inputName, sourceNode, outputName = "default") {
@@ -58,12 +59,14 @@ class Node {
     return null; // Override in subclasses
   }
 
-  update(time) {
+  update(time, frameId) {
+    // Prevent infinite recursion in feedback/circular graphs
+    if (this._lastFrame === frameId) return;
+    this._lastFrame = frameId;
     // Update all inputs first
     for (const [inputName, connection] of this.inputs) {
-      connection.node.update(time);
+      connection.node.update(time, frameId);
     }
-
     this.process(time);
     this.lastUpdateTime = time;
   }
@@ -91,6 +94,25 @@ class TextureNode extends Node {
       format: options.format || "FLOAT",
     };
     this.floatSupported = options.floatSupported || false;
+    // Static transparent black fallback
+    if (!TextureNode._transparentBlack) {
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        1,
+        1,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        new Uint8Array([0, 0, 0, 0])
+      );
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      TextureNode._transparentBlack = tex;
+    }
   }
 
   output(outputName = "default") {
@@ -98,6 +120,10 @@ class TextureNode extends Node {
       this.isProcessing = true;
       this.process(this.lastUpdateTime);
       this.isProcessing = false;
+    }
+    // If still not ready, return transparent black
+    if (!this.texture) {
+      return { texture: TextureNode._transparentBlack, width: 1, height: 1 };
     }
     return { texture: this.texture, width: this.width, height: this.height };
   }
@@ -179,9 +205,10 @@ class CanvasTextureNode extends TextureNode {
 
   // Update method to be called from the animation loop
   update(drawCallback) {
-    if (drawCallback) {
-      this.drawCallback = drawCallback;
+    if (!drawCallback) {
+      return this;
     }
+    this.drawCallback = drawCallback;
     this.process(this.minigl.clock);
     return this;
   }
@@ -590,6 +617,201 @@ class FeedbackNode extends ShaderNode {
   }
 }
 
+// --- MRTNode: Multi-Render Target Node (up to 4 outputs) ---
+class MRTNode extends TextureNode {
+  constructor(gl, options = {}) {
+    super(gl, options);
+    this.numTargets = Math.min(options.numTargets || 2, 4);
+    this.textures = [];
+    this.framebuffer = null;
+    this.program = null;
+    this.fragmentShader = options.fragmentShader;
+    this.vertexShader = options.vertexShader;
+    this.uniforms = options.uniforms || {};
+    this.defaultVertexShader = options.defaultVertexShader;
+    this.createRenderTargets();
+  }
+  createRenderTargets() {
+    const gl = this.gl;
+    const useFloat = this.textureOptions.format === "FLOAT";
+    const wrap =
+      this.textureOptions.wrap === "REPEAT" ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+    let internalFormat, type;
+    if (useFloat && this.floatSupported) {
+      internalFormat = gl.RGBA32F;
+      type = gl.FLOAT;
+    } else {
+      internalFormat = gl.RGBA8;
+      type = gl.UNSIGNED_BYTE;
+    }
+    // Create N textures
+    this.textures = [];
+    for (let i = 0; i < this.numTargets; ++i) {
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        internalFormat,
+        this.width,
+        this.height,
+        0,
+        gl.RGBA,
+        type,
+        null
+      );
+      this.textures.push(tex);
+    }
+    // Create framebuffer and attach all textures
+    if (!this.framebuffer) this.framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    const drawBuffers = [];
+    for (let i = 0; i < this.numTargets; ++i) {
+      gl.framebufferTexture2D(
+        gl.FRAMEBUFFER,
+        gl.COLOR_ATTACHMENT0 + i,
+        gl.TEXTURE_2D,
+        this.textures[i],
+        0
+      );
+      drawBuffers.push(gl.COLOR_ATTACHMENT0 + i);
+    }
+    gl.drawBuffers(drawBuffers);
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error(`MRT framebuffer not complete: ${status}`);
+    }
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+  ensureProgram() {
+    if (this.program) return;
+    if (!this.minigl) return;
+    const vertexSource =
+      this.vertexShader ||
+      this.defaultVertexShader ||
+      this.minigl.VERTEX_SHADER;
+    this.program = this.minigl.createProgram(vertexSource, this.fragmentShader);
+  }
+  process(time) {
+    const gl = this.gl;
+    this.ensureProgram();
+    if (!this.program || !this.minigl) return;
+    const defaultUniforms = this.minigl.getGlobalUniforms(
+      this.width,
+      this.height,
+      time
+    );
+    const inputTextures = {};
+    for (const [inputName, connection] of this.inputs) {
+      const output = connection.node.output(connection.output);
+      if (output?.texture) {
+        inputTextures[inputName] = output;
+        const size = connection.node.size();
+        inputTextures[`${inputName}Size`] = { x: size[0], y: size[1] };
+      }
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    gl.viewport(0, 0, this.width, this.height);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(this.program);
+    gl.bindVertexArray(this.minigl.vao);
+    this.minigl.setUniforms(this.program, {
+      ...defaultUniforms,
+      ...this.uniforms,
+      ...inputTextures,
+    });
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindVertexArray(null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+  output(outputName = "default") {
+    // outputName: "0", "1", ...
+    const idx = outputName === "default" ? 0 : parseInt(outputName, 10);
+    return {
+      texture: this.textures[idx] || this.textures[0],
+      width: this.width,
+      height: this.height,
+    };
+  }
+  resize(width, height) {
+    if (this.width !== width || this.height !== height) {
+      this.width = width;
+      this.height = height;
+      this.createRenderTargets();
+    }
+    return this;
+  }
+  dispose() {
+    const gl = this.gl;
+    for (const tex of this.textures) gl.deleteTexture(tex);
+    if (this.framebuffer) gl.deleteFramebuffer(this.framebuffer);
+    if (this.program) gl.deleteProgram(this.program);
+    this.textures = [];
+    this.framebuffer = this.program = null;
+  }
+}
+
+// --- VideoTextureNode: Like ImageTextureNode, but for <video> ---
+class VideoTextureNode extends TextureNode {
+  constructor(gl, options = {}) {
+    super(gl, {
+      name: options.name || "VideoTexture",
+      ...options,
+    });
+    this.url = options.url;
+    this.video = null;
+    this.isLoaded = false;
+    if (this.url) {
+      this.load(this.url);
+    }
+  }
+  load(url) {
+    if (this.isLoaded) return;
+    this.url = url;
+    const video = document.createElement("video");
+    video.crossOrigin = "anonymous";
+    video.src = url;
+    video.loop = true;
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.addEventListener("canplay", () => {
+      this.video = video;
+      this.width = this.width || video.videoWidth;
+      this.height = this.height || video.videoHeight;
+      this.isLoaded = true;
+      video.play();
+    });
+    video.load();
+  }
+  process(time) {
+    if (!this.isLoaded || !this.video || this.video.readyState < 2) return;
+    const gl = this.gl;
+    const minigl = this.minigl;
+    if (!this.texture) {
+      this.texture = gl.createTexture();
+    }
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    minigl._applyTextureParams(this.texture, this.textureOptions);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      this.video
+    );
+    if (this.textureOptions.mipmap !== false) {
+      gl.generateMipmap(gl.TEXTURE_2D);
+    }
+  }
+}
+
 class miniGL {
   constructor(id) {
     this.canvas = document.getElementById(id);
@@ -834,31 +1056,40 @@ class miniGL {
     return this.setOutput(node);
   }
 
+  // Topological sort utility
+  _topoSort(outputNode) {
+    const visited = new Set();
+    const order = [];
+    function visit(node) {
+      if (visited.has(node)) return;
+      visited.add(node);
+      for (const conn of node.inputs.values()) {
+        visit(conn.node);
+      }
+      order.push(node);
+    }
+    visit(outputNode);
+    return order;
+  }
+
   // Rendering and update logic
   render() {
-    // Skip rendering if not visible
     if (!this.isVisible && this.intersectionObserver) return;
-
-    // Update the clock for time-based effects
     this.clock++;
     const currentTime = this.clock;
-
-    // Update velocity decay
     if (performance.now() - this.lastMouseUpdateTime > 16) {
       this.mouseVelocity.x *= 0.95;
       this.mouseVelocity.y *= 0.95;
-
       if (Math.abs(this.mouseVelocity.x) < 0.001) this.mouseVelocity.x = 0;
       if (Math.abs(this.mouseVelocity.y) < 0.001) this.mouseVelocity.y = 0;
     }
-
-    // Skip if no output node
     if (!this.outputNode) return;
-
-    // Update and render the output node (which will update its dependencies)
-    this.outputNode.update(currentTime);
-
-    // Final render to screen
+    // Topo sort and update all nodes in order
+    const frameId = this.clock;
+    const order = this._topoSort(this.outputNode);
+    for (const node of order) {
+      node.update(currentTime, frameId);
+    }
     this.renderToScreen();
   }
 
@@ -1069,84 +1300,46 @@ class miniGL {
   }
 
   // Preprocess shader source to replace <#tag> references with actual code
-  preprocessShader(shaderSource) {
+  preprocessShader(shaderSource, maxDepth = 3, _depth = 0) {
     if (!shaderSource.includes("<#")) return shaderSource;
-
-    // Find all <#category.function> references
+    if (_depth > maxDepth) {
+      console.warn("Shader preprocess: max depth exceeded");
+      return shaderSource;
+    }
     const tagRegex = /<#([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)>/g;
     const dependencies = new Set();
     let match;
-
-    // Collect all dependencies
     while ((match = tagRegex.exec(shaderSource)) !== null) {
       const category = match[1];
       const func = match[2];
       dependencies.add(`${category}.${func}`);
     }
-
-    // Process dependencies recursively to handle nested dependencies
     const processedSnippets = new Map();
-    const processSnippet = (category, func) => {
+    const processSnippet = (category, func, depth) => {
       const key = `${category}.${func}`;
-
-      // If already processed, return
       if (processedSnippets.has(key)) return processedSnippets.get(key);
-
-      // Check if the snippet exists
       if (!shaderLib[category] || !shaderLib[category][func]) {
         console.warn(`Shader snippet not found: ${key}`);
         return "";
       }
-
-      // Get the snippet code
       let snippet = shaderLib[category][func];
-
-      // Process any nested dependencies in this snippet
-      let nestedMatch;
-      const nestedRegex = /<#([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)>/g;
-
-      while ((nestedMatch = nestedRegex.exec(snippet)) !== null) {
-        const nestedCategory = nestedMatch[1];
-        const nestedFunc = nestedMatch[2];
-        const nestedKey = `${nestedCategory}.${nestedFunc}`;
-
-        // Avoid circular dependencies
-        if (nestedKey === key) {
-          console.error(
-            `Circular dependency detected in shader snippet: ${key}`
-          );
-          continue;
-        }
-
-        // Process the nested dependency
-        const nestedSnippet = processSnippet(nestedCategory, nestedFunc);
-
-        // Replace the tag in the current snippet
-        snippet = snippet.replace(
-          `<#${nestedCategory}.${nestedFunc}>`,
-          nestedSnippet
-        );
+      // Recursively expand nested tags up to maxDepth
+      if (depth < maxDepth) {
+        snippet = this.preprocessShader(snippet, maxDepth, depth + 1);
       }
-
-      // Store and return the processed snippet
       processedSnippets.set(key, snippet);
       return snippet;
     };
-
-    // Process all top-level dependencies
     for (const dep of dependencies) {
       const [category, func] = dep.split(".");
-      processSnippet(category, func);
+      processSnippet(category, func, _depth);
     }
-
-    // Replace all <#tags> with their actual code
     let processedShader = shaderSource;
     for (const [key, code] of processedSnippets.entries()) {
       const [category, func] = key.split(".");
       const tag = `<#${category}.${func}>`;
       processedShader = processedShader.replace(new RegExp(tag, "g"), code);
     }
-
     return processedShader;
   }
 
@@ -1309,6 +1502,53 @@ class miniGL {
   ) {
     targetNode.connect(inputName, sourceNode, outputName);
     return this; // Return 'this' for chaining with miniGL methods
+  }
+
+  // Factory method for MRT node
+  createMRTNode(fragmentShader, options = {}) {
+    const processedShader = this.preprocessShader(fragmentShader);
+    const node = new MRTNode(this.gl, {
+      fragmentShader: processedShader,
+      vertexShader: options.vertexShader,
+      defaultVertexShader: this.VERTEX_SHADER,
+      floatSupported: this.floatSupported,
+      uniforms: options.uniforms || {},
+      width: options.width || this.canvas.width,
+      height: options.height || this.canvas.height,
+      filter: options.filter,
+      wrap: options.wrap,
+      mipmap: options.mipmap,
+      format: options.format,
+      name: options.name,
+      numTargets: options.numTargets || 2,
+    });
+    node.minigl = this;
+    return this.addNode(node);
+  }
+
+  // Shorter alias
+  mrt(fragmentShader, options = {}) {
+    return this.createMRTNode(fragmentShader, options);
+  }
+
+  // Factory method for video texture node
+  createVideoTexture(url, options = {}) {
+    const node = new VideoTextureNode(this.gl, {
+      url,
+      width: options.width,
+      height: options.height,
+      filter: options.filter,
+      wrap: options.wrap,
+      mipmap: options.mipmap,
+      name: options.name,
+    });
+    node.minigl = this;
+    return this.addNode(node);
+  }
+
+  // Shorter alias
+  video(url, options = {}) {
+    return this.createVideoTexture(url, options);
   }
 }
 
