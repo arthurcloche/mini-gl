@@ -3,24 +3,11 @@
  * Focused on flexible composition of shader effects with node architecture
  *
  * TODO:
- * [✓] Basic class structure and core functionality
- * [✓] Base Node class
- * [✓] Connection system
- * [✓] Node types: TextureNode, ShaderNode, BlendNode, FeedbackNode
- *   [✓] TextureNode
- *   [✓] ShaderNode
- *   [✓] BlendNode
- *   [✓] FeedbackNode
- * [✓] Screen rendering from output node
  * [ ] Implement topological sorting for dependency resolution
  * [ ] Dependency tracking and execution optimization
  * [ ] Circular dependency handling for feedback loops
  * [ ] Render queue optimization
- * [ ] Enhanced debugging and visualization
- * [ ] Migration guide from miniGL.js
  */
-
-import shaderLib from "./shaderLib.js";
 
 class Node {
   constructor(gl, options = {}) {
@@ -83,7 +70,7 @@ class Node {
 /**
  * TextureNode - Base class for all texture-producing nodes
  */
-class TextureNode extends Node {
+export class TextureNode extends Node {
   constructor(gl, options = {}) {
     super(gl, options);
     this.texture = null;
@@ -141,6 +128,60 @@ class TextureNode extends Node {
       this.gl.deleteTexture(this.texture);
       this.texture = null;
     }
+  }
+
+  async bake() {
+    // Render this node to a new 2D texture, return a new TextureNode with the result
+    const gl = this.gl;
+    const minigl = this.minigl;
+    const width = this.width;
+    const height = this.height;
+    // Create framebuffer and texture
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      width,
+      height,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      null
+    );
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      tex,
+      0
+    );
+    // Render this node to the framebuffer
+    const prevFB = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+    gl.viewport(0, 0, width, height);
+    // Use a simple pass-through shader
+    if (!minigl._bakeProgram) {
+      const frag = `#version 300 es\nprecision highp float;\nuniform sampler2D src;\nin vec2 glCoord;\nout vec4 fragColor;\nvoid main() { fragColor = texture(src, glCoord); }`;
+      minigl._bakeProgram = minigl.createProgram(minigl.VERTEX_SHADER, frag);
+    }
+    gl.useProgram(minigl._bakeProgram);
+    gl.bindVertexArray(minigl.vao);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.output().texture);
+    gl.uniform1i(gl.getUniformLocation(minigl._bakeProgram, "src"), 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindVertexArray(null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, prevFB);
+    // Return a new TextureNode with the baked texture
+    const baked = new TextureNode(gl, { width, height });
+    baked.texture = tex;
+    baked.minigl = minigl;
+    return baked;
   }
 }
 
@@ -472,6 +513,11 @@ class ShaderNode extends TextureNode {
     if (this.program) gl.deleteProgram(this.program);
     this.texture = this.framebuffer = this.program = null;
   }
+
+  updateUniform(key, value) {
+    this.uniforms[key] = value;
+    return this;
+  }
 }
 
 /**
@@ -615,6 +661,71 @@ class FeedbackNode extends ShaderNode {
       this.framebufferB = null;
     }
   }
+
+  updateUniform(key, value) {
+    this.uniforms[key] = value;
+    return this;
+  }
+}
+
+// GroupNode: a composable subgraph with miniGL-like API
+class GroupNode extends TextureNode {
+  constructor(gl, options = {}) {
+    super(gl, options);
+    this._internalNodes = new Set();
+    this._internalOutput = null;
+    this._internalClock = 0;
+    this._transparentBlack = TextureNode._transparentBlack;
+    // API: shader, blend, pingpong, mrt, image, canvas
+    this.shader = (...args) =>
+      this._addInternalNode(new ShaderNode(gl, ...args));
+    this.pingpong = (...args) =>
+      this._addInternalNode(new FeedbackNode(gl, ...args));
+    // Add more as needed (blend, mrt, etc.)
+  }
+  _addInternalNode(node) {
+    node.minigl = this.minigl || this; // for setUniforms, etc.
+    this._internalNodes.add(node);
+    return node;
+  }
+  connect(source, target, inputName = "glTexture", outputName = "default") {
+    target.connect(inputName, source, outputName);
+    return this;
+  }
+  output(node) {
+    if (node) this._internalOutput = node;
+    if (!this._internalOutput)
+      return { texture: this._transparentBlack, width: 1, height: 1 };
+    return this._internalOutput.output();
+  }
+  process(time) {
+    if (!this._internalOutput) return;
+    // Topo sort internal graph
+    const visited = new Set();
+    const order = [];
+    function visit(node) {
+      if (visited.has(node)) return;
+      visited.add(node);
+      for (const conn of node.inputs.values()) visit(conn.node);
+      order.push(node);
+    }
+    visit(this._internalOutput);
+    for (const n of order) n.update(time, time);
+  }
+  update(time, frameId) {
+    if (!this._internalOutput) return;
+    this.process(time);
+    this.lastUpdateTime = time;
+  }
+  // Transparent black fallback if not ready
+  output(outputName = "default") {
+    if (!this._internalOutput)
+      return { texture: this._transparentBlack, width: 1, height: 1 };
+    const out = this._internalOutput.output(outputName);
+    if (!out || !out.texture)
+      return { texture: this._transparentBlack, width: 1, height: 1 };
+    return out;
+  }
 }
 
 // --- MRTNode: Multi-Render Target Node (up to 4 outputs) ---
@@ -691,10 +802,7 @@ class MRTNode extends TextureNode {
   ensureProgram() {
     if (this.program) return;
     if (!this.minigl) return;
-    const vertexSource =
-      this.vertexShader ||
-      this.defaultVertexShader ||
-      this.minigl.VERTEX_SHADER;
+    const vertexSource = this.minigl.VERTEX_SHADER;
     this.program = this.minigl.createProgram(vertexSource, this.fragmentShader);
   }
   process(time) {
@@ -753,6 +861,11 @@ class MRTNode extends TextureNode {
     if (this.program) gl.deleteProgram(this.program);
     this.textures = [];
     this.framebuffer = this.program = null;
+  }
+
+  updateUniform(key, value) {
+    this.uniforms[key] = value;
+    return this;
   }
 }
 
@@ -827,6 +940,7 @@ class miniGL {
     this.ratio = 1.0; // Aspect ratio (width/height)
     this.isVisible = true; // For intersection observer
     this.eventController = new AbortController(); // For cleaning up event listeners
+    this._shaderChunks = null;
 
     // Create a shared canvas for texture operations
     this._sharedCanvas = document.createElement("canvas");
@@ -1056,7 +1170,7 @@ class miniGL {
     return this.setOutput(node);
   }
 
-  // Topological sort utility
+  // Topological sort utility (skip nodes with no output)
   _topoSort(outputNode) {
     const visited = new Set();
     const order = [];
@@ -1068,7 +1182,7 @@ class miniGL {
       }
       order.push(node);
     }
-    visit(outputNode);
+    if (outputNode) visit(outputNode);
     return order;
   }
 
@@ -1301,6 +1415,7 @@ class miniGL {
 
   // Preprocess shader source to replace <#tag> references with actual code
   preprocessShader(shaderSource, maxDepth = 3, _depth = 0) {
+    if (!this._shaderChunks) return shaderSource;
     if (!shaderSource.includes("<#")) return shaderSource;
     if (_depth > maxDepth) {
       console.warn("Shader preprocess: max depth exceeded");
@@ -1318,12 +1433,14 @@ class miniGL {
     const processSnippet = (category, func, depth) => {
       const key = `${category}.${func}`;
       if (processedSnippets.has(key)) return processedSnippets.get(key);
-      if (!shaderLib[category] || !shaderLib[category][func]) {
+      if (
+        !this._shaderChunks[category] ||
+        !this._shaderChunks[category][func]
+      ) {
         console.warn(`Shader snippet not found: ${key}`);
         return "";
       }
-      let snippet = shaderLib[category][func];
-      // Recursively expand nested tags up to maxDepth
+      let snippet = this._shaderChunks[category][func];
       if (depth < maxDepth) {
         snippet = this.preprocessShader(snippet, maxDepth, depth + 1);
       }
@@ -1549,6 +1666,27 @@ class miniGL {
   // Shorter alias
   video(url, options = {}) {
     return this.createVideoTexture(url, options);
+  }
+
+  // Factory method for group node
+  createGroupNode(options = {}) {
+    const node = new GroupNode(this.gl, {
+      width: options.width || this.canvas.width,
+      height: options.height || this.canvas.height,
+      name: options.name,
+    });
+    node.minigl = this;
+    return this.addNode(node);
+  }
+
+  // Shorter alias
+  group(options = {}) {
+    return this.createGroupNode(options);
+  }
+
+  useChunks(chunks) {
+    this._shaderChunks = chunks;
+    return this;
   }
 }
 

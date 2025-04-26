@@ -1,201 +1,329 @@
 # miniGL
 
-A minimal WebGL2 rendering pipeline focused on fragment shader effects with minimal overhead.
-
-## Overview
-
-miniGL provides a streamlined API for creating GPU-accelerated graphics and effects. It's designed for developers who want to leverage WebGL2's power without the complexity of larger frameworks.
+Minimal node-based WebGL2 creative coding engine. Compose fragment shaders, feedback, blend, image/video/canvas textures, and more with a simple, chainable API. Inspired by ShaderToy, but without the WebGL boilerplate.
 
 ## Features
+- Node-based: connect shader, feedback, blend, texture, MRT, and more
+- Topological sort: stable, efficient updates
+- Feedback and ping-pong for GPGPU/iterative effects
+- Minimal, modern API
+- **Optional**: Shader snippet system (see below)
 
-- WebGL2-based rendering pipeline
-- Shader pass system for filter and post-processing effects
-- Ping-pong render targets for iterative effects
-- Dynamic canvas textures with auto-updates
-- Minimal overhead with focus on fragment shader effects
+## Install
+Just drop `miniGL.js` and (optionally) `miniChunks.js` in your project. No build step needed.
 
-## Installation
+## Usage
+```js
+import miniGL from './miniGL.js';
+const gl = new miniGL('canvas');
 
-```bash
-# Clone the repository
-git clone https://github.com/arthurcloche/mini-gl.git
-
-# Navigate to the project
-cd mini-gl
-
-# Serve with any HTTP server
-# For example, with Python:
-python -m http.server
+// (Optional) Enable shader snippets:
+import miniChunks from './miniChunks.js';
+gl.useChunks(miniChunks); // enables <#tag> support in shaders
 ```
 
-## Basic Usage
+## Uniforms
+Uniforms are values passed to shaders. You can set them at node creation or update them dynamically.
 
-```javascript
-import miniGL from "./miniGL.js";
+### How to use
+- Pass a `uniforms` object in the node options:
+  ```js
+  const node = gl.shader(fragmentShader, { uniforms: { uTime: 0, uAmount: 1.0 } });
+  ```
+- Update a uniform at runtime:
+  ```js
+  node.updateUniform('uAmount', 0.5);
+  ```
+- Uniforms can be numbers, booleans, arrays, `{x, y, z, w}` objects, or `{ texture }` objects.
 
-// Initialize with canvas ID
-const gl = new miniGL("glCanvas");
+### Built-in Uniforms (auto-injected)
+- `glUV` — `{x, y}`: raw texture coordinates
+- `glCoord` — `{x, y}`: normalized texture coordinates
+- `glResolution` — `{x, y}`: canvas size in pixels
+- `glTime` — `float`: frame count (or time, depending on usage)
+- `glMouse` — `{x, y, z}`: mouse position (0-1), z=1 if mouse down
+- `glVelocity` — `{x, y}`: mouse velocity
+- `glPixel` — `{x, y}`: 1/width, 1/height
+- `glRatio` — `float`: aspect ratio
+- `glPrevious` — `{ texture }`: previous frame (for feedback nodes only !)
 
-// Create a basic shader pass
-const basicPass = gl.createShaderPass({
-  fragmentShader: `#version 300 es
-    precision highp float;
-    
-    in vec2 vTexCoord;
-    uniform float uTime;
-    
-    out vec4 fragColor;
-    
-    void main() {
-      vec3 color = 0.5 + 0.5 * sin(uTime * 0.01 + vTexCoord.xyx);
-      fragColor = vec4(color, 1.0);
-    }`,
-});
+## Node Types & Examples
 
-// Set up render loop
-function render() {
-  gl.render();
-  requestAnimationFrame(render);
+### 1. Shader Node
+**Description:** Runs a custom fragment shader and outputs a texture.
+**Options:**
+```js
+{
+  uniforms: { ... }, // uniforms for the shader
+  vertexShader: '...', // optional custom vertex shader
+  width: 512, // optional, default: canvas width
+  height: 512, // optional, default: canvas height
+  filter: 'LINEAR' | 'NEAREST',
+  wrap: 'CLAMP_TO_EDGE' | 'REPEAT',
+  mipmap: true | false,
+  format: 'FLOAT' | 'UNSIGNED_BYTE',
+  name: 'MyShader',
 }
-render();
 ```
-
-## Flowmap Implementation
-
-The flowmap technique creates fluid-like distortion effects based on mouse movement, perfect for interactive backgrounds and hover effects.
-
-### Creating a Flowmap
-
-```javascript
-const flowmapPass = gl.createPingPongPass({
-  fragmentShader: `#version 300 es
-    precision highp float;
-  
-    in vec2 vTexCoord;
-    uniform sampler2D uPrevious; 
-    uniform vec2 uMouse;         
-    uniform vec2 uVelocity;      
-    uniform vec2 uResolution;    
-    uniform float uTime;         
-    
-    uniform float uFalloff;
-    uniform float uAlpha;
-    uniform float uDissipation;
-
-    out vec4 fragColor;
-    
-    const vec2 vFactor = vec2(10.);
-    
-    void main() {
-      // Sample the previous state
-      vec4 color = texture(uPrevious, vTexCoord) * uDissipation;
-      
-      vec2 cursor = vTexCoord - uMouse;
-      float aspect = uResolution.x/uResolution.y;
-      cursor.x *= aspect;
-
-      vec3 stamp = vec3(uVelocity * vFactor * vec2(1, -1), 1.0 - pow(1.0 - min(1.0, length(uVelocity * vFactor)), 3.0));
-      float falloff = smoothstep(uFalloff, 0.0, length(cursor)) * uAlpha;
-      
-      color.rgb = mix(color.rgb, stamp, vec3(falloff));
-      
-      fragColor = color;
-    }`,
-  uniforms: {
-    uFalloff: 0.3,
-    uAlpha: 1.0,
-    uDissipation: 0.98,
-  },
-  format: gl.FLOAT, // Important for precision
-});
+**Template:**
+```js
+const node = gl.shader(fragmentShader, { uniforms: { uTime: 0 } });
 ```
-
-### Using the Flowmap for Distortion
-
-```javascript
-// Create a texture to distort
-const waterTexture = gl.canvasTexture((ctx, width, height) => {
-  // Create your texture here
-});
-
-// Visualization pass that uses the flowmap
-const visualizePass = gl.createShaderPass({
-  fragmentShader: `#version 300 es
-    precision highp float;
-
-    in vec2 vTexCoord;
-    uniform sampler2D uTexture;
-    uniform sampler2D uFlowmap;
-    uniform sampler2D uWaterTexture;
-    uniform float uTime;
-    
-    out vec4 fragColor;
-    
-    void main() {
-      // Get flow data (R/G = velocity X/Y, B = intensity)
-      vec3 flow = texture(uFlowmap, vTexCoord).rgb;
-      
-      // Create two time-varying phases for smooth animation
-      float phase0 = uTime * 0.25;
-      float phase1 = phase0 + 0.5;
-      
-      float time0 = fract(phase0);
-      float time1 = fract(phase1);
-      
-      // Calculate distortion strength that varies over time
-      float strength0 = 1.0 - time0;
-      float strength1 = 1.0 - time1;
-      
-      // Apply flow-based distortion to UV coordinates
-      vec2 distortion0 = flow.xy * strength0 * 0.05;
-      vec2 distortion1 = flow.xy * strength1 * 0.05;
-      
-      // Sample texture with distorted coordinates
-      vec3 color0 = texture(uWaterTexture, vTexCoord - distortion0).rgb;
-      vec3 color1 = texture(uWaterTexture, vTexCoord - distortion1).rgb;
-      
-      // Blend between the two phases
-      float blend = abs(1.0 - 2.0 * time0);
-      vec3 color = mix(color0, color1, blend);
-      
-      fragColor = vec4(color, 1.0);
-    }`,
-  uniforms: {
-    uFlowmap: flowmapPass,
-    uWaterTexture: waterTexture
+**Example:**
+```js
+const shaderNode = gl.shader(`
+  #version 300 es
+  precision highp float;
+  uniform float uTime;
+  in vec2 glCoord;
+  out vec4 fragColor;
+  void main() {
+    float d = length(glCoord - 0.5);
+    fragColor = vec4(vec3(d < 0.25 + 0.1 * sin(uTime)), 1.0);
   }
-});
+`, { uniforms: { uTime: 0 } });
+gl.output(shaderNode);
 ```
 
-## API Reference
+### 2. Pingpong (Feedback) Node
+**Description:** Runs a fragment shader with feedback from the previous frame (for trails, fluid, etc).
+**Options:**
+```js
+{
+  uniforms: { ... },
+  width, height, filter, wrap, mipmap, format, name // same as shader
+}
+```
+**Template:**
+```js
+const node = gl.pingpong(fragmentShader, { uniforms: { ... } });
+```
+**Example:**
+```js
+const feedback = gl.pingpong(`
+  #version 300 es
+  precision highp float;
+  uniform float uAlpha;
+  uniform sampler2D glPrevious;
+  in vec2 glCoord;
+  out vec4 fragColor;
+  void main() {
+    fragColor = texture(glPrevious, glCoord) * uAlpha;
+  }
+`, { uniforms: { uAlpha: 0.99 } });
+gl.output(feedback);
+```
 
-### Core
+### 3. Blend Node
+**Description:** Blends two textures using a blend mode and opacity.
+**Options:**
+```js
+{
+  blendMode: 'add' | 'multiply' | 'screen' | ...,
+  opacity: 1.0, // blend layer opacity
+  uniforms: { ... },
+  width, height, filter, wrap, mipmap, format, name
+}
+```
+**Template:**
+```js
+const node = gl.blend({ blendMode: 'add', opacity: 1.0 });
+```
+**Example:**
+```js
+const a = gl.shader(...); // any node
+const b = gl.shader(...);
+const blend = gl.blend({ blendMode: 'add', opacity: 1.0 });
+gl.connect(a, blend, 'glBase');
+gl.connect(b, blend, 'glBlend');
+gl.output(blend);
+```
 
-- `new miniGL(canvasId)` - Initialize miniGL with canvas ID
-- `gl.render()` - Render all passes
-- `gl.resize()` - Update all passes when canvas size changes
+### 4. Image Node
+**Description:** Loads an image as a texture.
+**Options:**
+```js
+{
+  url: 'img.jpg',
+  width, height, filter, wrap, mipmap, name
+}
+```
+**Template:**
+```js
+const node = gl.image('img.jpg', { width: 256, height: 256 });
+```
+**Example:**
+```js
+const img = gl.image('myimg.jpg');
+gl.output(img);
+```
 
-### Textures
+### 5. Video Node
+**Description:** Loads a video as a texture (auto-plays, loops, muted).
+**Options:**
+```js
+{
+  url: 'vid.mp4',
+  width, height, filter, wrap, mipmap, name
+}
+```
+**Template:**
+```js
+const node = gl.video('myvid.mp4', { width: 256, height: 256 });
+```
+**Example:**
+```js
+const vid = gl.video('myvid.mp4');
+gl.output(vid);
+```
 
-- `gl.canvasTexture(drawCallback, options)` - Create a texture from canvas drawing
-- `gl.imageTexture(url, options)` - Create a texture from an image
+### 6. Canvas Node
+**Description:** Uses a 2D canvas as a texture, updated by a draw callback.
+**Options:**
+```js
+{
+  drawCallback: (ctx, w, h) => { ... },
+  width, height, filter, wrap, mipmap, name
+}
+```
+**Template:**
+```js
+const node = gl.canvas((ctx, w, h) => { ... }, { width: 256, height: 256 });
+```
+**Example:**
+```js
+const canvasNode = gl.canvas((ctx, w, h) => {
+  ctx.fillStyle = 'red';
+  ctx.beginPath();
+  ctx.arc(w/2, h/2, Math.min(w,h)/4, 0, 2*Math.PI);
+  ctx.fill();
+});
+gl.output(canvasNode);
+```
 
-### Render Passes
+### 7. MRT (Multi-Render Target) Node
+**Description:** Runs a shader that outputs to multiple textures in one pass.
+**Options:**
+```js
+{
+  fragmentShader: '...',
+  numTargets: 2-4,
+  uniforms: { ... },
+  width, height, filter, wrap, mipmap, format, name
+}
+```
+**Template:**
+```js
+const node = gl.mrt(fragmentShader, { numTargets: 3, uniforms: { ... } });
+```
+**Example:**
+```js
+const mrtShader = `#version 300 es
+precision highp float;
+uniform float uMix;
+in vec2 glCoord;
+layout(location = 0) out vec4 outR;
+layout(location = 1) out vec4 outG;
+layout(location = 2) out vec4 outB;
+void main() {
+  float d = length(glCoord - 0.5);
+  float c = step(d, 0.25 + 0.1 * uMix);
+  outR = vec4(c,0,0,1);
+  outG = vec4(0,c,0,1);
+  outB = vec4(0,0,c,1);
+}`;
+const mrt = gl.mrt(mrtShader, { numTargets: 3, uniforms: { uMix: 0 } });
+const sum = gl.shader(`
+  #version 300 es
+  precision highp float;
+  uniform sampler2D texR, texG, texB;
+  in vec2 glCoord;
+  out vec4 fragColor;
+  void main() {
+    fragColor = texture(texR, glCoord) + texture(texG, glCoord) + texture(texB, glCoord);
+  }
+`);
+gl.connect(mrt, sum, 'texR', '0');
+gl.connect(mrt, sum, 'texG', '1');
+gl.connect(mrt, sum, 'texB', '2');
+gl.output(sum);
+```
 
-- `gl.createShaderPass(options)` - Create a basic shader pass
-- `gl.createPingPongPass(options)` - Create a ping-pong pass for iterative effects
+### 8. Group Node (Subgraph)
+**Description:** Build a subgraph with the same API as miniGL, for custom multi-pass effects.
+**Options:**
+```js
+{
+  width, height, name // (optional)
+}
+```
+**Template:**
+```js
+const group = gl.group();
+const a = group.shader(...);
+const b = group.shader(...);
+group.connect(a, b, 'uInput');
+group.output(b);
+gl.output(group);
+```
+**Example:**
+```js
+const group = gl.group();
+const a = group.shader(...);
+const b = group.shader(...);
+group.connect(a, b, 'uInput');
+group.output(b);
+gl.output(group);
+```
 
-### Uniforms
+**Note:** Only `shader`, `pingpong`, and `mrt` nodes support `.updateUniform(key, value)`.
 
-Automatically supported uniform types:
-- `float`, `int`
-- `vec2`, `vec3`, `vec4`
-- `texture` objects
-- Custom Pass objects (automatically extracts the correct texture)
-- No support for `mat` so far as i didn't encounter a usecase yet but if anything, just use the DOMMatrix object.
+## How miniGL Works (Node Graph Example)
 
-## License
+```
+[Image]   [Canvas]   [Video]
+    \         |         /
+     \        |        /
+      [Blend/Shader/Group]   [Noise]
+                |         /
+             [Blend/Shader]
+                  |
+              [Output]
+```
+- Each [Node] is a processing step (shader, blend, feedback, etc)
+- You connect nodes with `gl.connect(a, b, 'inputName')`
+- The graph is topo-sorted and only reachable nodes are processed
+- Feedback nodes (pingpong) can create cycles for effects
 
-MIT
+## Shader Snippets (Optional)
+- To use `<#category.name>` tags in your GLSL, you **must** call `gl.useChunks(miniChunks)` with your chunk library.
+- If you never call `useChunks`, `<#tags>` are ignored and shaders are not preprocessed (zero overhead).
+
+## Connecting Nodes
+```js
+gl.connect(sourceNode, targetNode, inputName, outputName = 'default');
+// Example:
+gl.connect(noiseNode, colorNode, 'uNoise');
+```
+
+## Output
+```js
+gl.output(node); // Set the final node to render to screen
+```
+
+## Blend Modes
+- `add`, `multiply`, `screen`, `overlay`, `normal`, etc. (see your chunk lib for all)
+
+## Minimal Test Suite
+- See `test/graph.test.js` for dry graph logic tests (no rendering, just node plumbing).
+
+## Performance
+- Each node = 1 framebuffer/render pass (except MRT, which does N outputs in 1 pass)
+- Modern browsers easily handle 10–30 nodes at 1080p, more at lower res or with simple shaders
+- Bottleneck: VRAM, shader complexity, and framebuffer switches
+- For creative coding/interactive art, you'll hit UI/CPU limits before GPU limits in most cases
+
+---
+MIT License
 
 Made w/ love for Shopify, 2025

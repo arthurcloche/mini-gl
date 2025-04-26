@@ -1,5 +1,5 @@
 // Shader function libraries for miniGL
-const shaderLib = {
+const miniChunks = {
   // Noise functions
   noise: {
     random: `
@@ -198,4 +198,4 @@ const shaderLib = {
   },
 };
 
-export default shaderLib;
+export default miniChunks;

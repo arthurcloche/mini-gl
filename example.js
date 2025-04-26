@@ -1,4 +1,5 @@
 import miniGL from "./miniGL.js";
+import miniChunks from "./miniChunks.js";
 
 // Example HTML/CSS for properly sizing the canvas:
 /*
@@ -23,7 +24,7 @@ import miniGL from "./miniGL.js";
 
 // Initialize miniGL
 const gl = new miniGL("canvas");
-
+gl.useChunks(miniChunks);
 // 1. Create a shader for generating noise
 const noiseShader = `#version 300 es
 precision highp float;
@@ -217,3 +218,66 @@ gl.connect(sourceNode, targetNode, "inputName");
 gl.ignoreIntersection(); // Disable the intersection observer to always render
 gl.ignoreResize();       // Disable the resize handler for manual control
 `);
+
+// --- TEST 1: Three shader nodes (A, B, C), blend together ---
+const circleShader = (color) => `#version 300 es
+precision highp float;
+in vec2 glCoord;
+out vec4 fragColor;
+void main() {
+  float d = length(glCoord - 0.5);
+  float circle = smoothstep(0.25, 0.24, d);
+  fragColor = vec4(${color}, 1.0) * circle;
+}`;
+
+const nodeA = gl.shader(circleShader("1.0,0.0,0.0"), { name: "Red Circle" });
+const nodeB = gl.shader(circleShader("0.0,1.0,0.0"), { name: "Green Circle" });
+const nodeC = gl.shader(circleShader("0.0,0.0,1.0"), { name: "Blue Circle" });
+
+const blendAB = gl.blend({ blendMode: "add", name: "A+B" });
+gl.connect(nodeA, blendAB, "glBase");
+gl.connect(nodeB, blendAB, "glBlend");
+
+const blendABC = gl.blend({ blendMode: "add", name: "A+B+C" });
+gl.connect(blendAB, blendABC, "glBase");
+gl.connect(nodeC, blendABC, "glBlend");
+
+gl.output(blendABC);
+
+// --- TEST 2: MRT node, 3 outputs, sum in output node ---
+const mrtShader = `#version 300 es
+precision highp float;
+in vec2 glUV;
+layout(location = 0) out vec4 outR;
+layout(location = 1) out vec4 outG;
+layout(location = 2) out vec4 outB;
+void main() {
+  float d = length(glUV - 0.5);
+  float circle = smoothstep(0.25, 0.24, d);
+  outR = vec4(1.0, 0.0, 0.0, 1.0) * circle;
+  outG = vec4(0.0, 1.0, 0.0, 1.0) * circle;
+  outB = vec4(0.0, 0.0, 1.0, 1.0) * circle;
+}`;
+
+const mrtNode = gl.mrt(mrtShader, { numTargets: 3, name: "MRT Circle" });
+
+const sumShader = `#version 300 es
+precision highp float;
+uniform sampler2D texR;
+uniform sampler2D texG;
+uniform sampler2D texB;
+in vec2 glCoord;
+out vec4 fragColor;
+void main() {
+  vec4 r = texture(texR, glCoord);
+  vec4 g = texture(texG, glCoord);
+  vec4 b = texture(texB, glCoord);
+  fragColor = r + g + b;
+}`;
+
+const sumNode = gl.shader(sumShader, { name: "Sum MRT" });
+gl.connect(mrtNode, sumNode, "texR", "0");
+gl.connect(mrtNode, sumNode, "texG", "1");
+gl.connect(mrtNode, sumNode, "texB", "2");
+// Uncomment to test MRT output:
+gl.output(sumNode);
