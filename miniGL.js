@@ -737,9 +737,7 @@ class MRTNode extends TextureNode {
     this.framebuffer = null;
     this.program = null;
     this.fragmentShader = options.fragmentShader;
-    this.vertexShader = options.vertexShader;
     this.uniforms = options.uniforms || {};
-    this.defaultVertexShader = options.defaultVertexShader;
     this.createRenderTargets();
   }
   createRenderTargets() {
@@ -803,6 +801,7 @@ class MRTNode extends TextureNode {
     if (this.program) return;
     if (!this.minigl) return;
     const vertexSource = this.minigl.VERTEX_SHADER;
+
     this.program = this.minigl.createProgram(vertexSource, this.fragmentShader);
   }
   process(time) {
@@ -814,6 +813,7 @@ class MRTNode extends TextureNode {
       this.height,
       time
     );
+
     const inputTextures = {};
     for (const [inputName, connection] of this.inputs) {
       const output = connection.node.output(connection.output);

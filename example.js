@@ -25,6 +25,8 @@ import miniChunks from "./miniChunks.js";
 // Initialize miniGL
 const gl = new miniGL("canvas");
 gl.useChunks(miniChunks);
+
+/*
 // 1. Create a shader for generating noise
 const noiseShader = `#version 300 es
 precision highp float;
@@ -176,7 +178,7 @@ const colorNode = gl.shader(colorEffectShader, {
 gl.connect(noiseNode, colorNode, "uNoise");
 gl.connect(flowmapNode, colorNode, "uFlowmap");
 gl.output(colorNode);
-
+*/
 // Animation loop
 function animate() {
   gl.render();
@@ -218,7 +220,7 @@ gl.connect(sourceNode, targetNode, "inputName");
 gl.ignoreIntersection(); // Disable the intersection observer to always render
 gl.ignoreResize();       // Disable the resize handler for manual control
 `);
-
+/*
 // --- TEST 1: Three shader nodes (A, B, C), blend together ---
 const circleShader = (color) => `#version 300 es
 precision highp float;
@@ -243,7 +245,7 @@ gl.connect(blendAB, blendABC, "glBase");
 gl.connect(nodeC, blendABC, "glBlend");
 
 gl.output(blendABC);
-
+*/
 // --- TEST 2: MRT node, 3 outputs, sum in output node ---
 const mrtShader = `#version 300 es
 precision highp float;

@@ -37,15 +37,15 @@ Uniforms are values passed to shaders. You can set them at node creation or upda
 - Uniforms can be numbers, booleans, arrays, `{x, y, z, w}` objects, or `{ texture }` objects.
 
 ### Built-in Uniforms (auto-injected)
-- `glUV` — `{x, y}`: raw texture coordinates
-- `glCoord` — `{x, y}`: normalized texture coordinates
 - `glResolution` — `{x, y}`: canvas size in pixels
 - `glTime` — `float`: frame count (or time, depending on usage)
 - `glMouse` — `{x, y, z}`: mouse position (0-1), z=1 if mouse down
 - `glVelocity` — `{x, y}`: mouse velocity
 - `glPixel` — `{x, y}`: 1/width, 1/height
 - `glRatio` — `float`: aspect ratio
-- `glPrevious` — `{ texture }`: previous frame (for feedback nodes only !)
+- `glPrevious` — `{ texture }`: previous frame (for feedback nodes)
+- `glCoord` — aspect-ratio corrected coordinates (use for round shapes)
+- `glUV` — raw texture coordinates (use for texture lookups)
 
 ## Node Types & Examples
 
@@ -218,21 +218,21 @@ const node = gl.mrt(fragmentShader, { numTargets: 3, uniforms: { ... } });
 ```
 **Example:**
 ```js
+// Use glCoord for round shapes (aspect-ratio corrected)
 const mrtShader = `#version 300 es
 precision highp float;
-uniform float uMix;
 in vec2 glCoord;
 layout(location = 0) out vec4 outR;
 layout(location = 1) out vec4 outG;
 layout(location = 2) out vec4 outB;
 void main() {
   float d = length(glCoord - 0.5);
-  float c = step(d, 0.25 + 0.1 * uMix);
+  float c = step(d, 0.25);
   outR = vec4(c,0,0,1);
   outG = vec4(0,c,0,1);
   outB = vec4(0,0,c,1);
 }`;
-const mrt = gl.mrt(mrtShader, { numTargets: 3, uniforms: { uMix: 0 } });
+const mrt = gl.mrt(mrtShader, { numTargets: 3 });
 const sum = gl.shader(`
   #version 300 es
   precision highp float;
@@ -322,6 +322,10 @@ gl.output(node); // Set the final node to render to screen
 - Modern browsers easily handle 10–30 nodes at 1080p, more at lower res or with simple shaders
 - Bottleneck: VRAM, shader complexity, and framebuffer switches
 - For creative coding/interactive art, you'll hit UI/CPU limits before GPU limits in most cases
+
+## Coordinates: glCoord vs glUV
+- `glCoord` is aspect-ratio corrected. Use for geometry, round shapes, SDFs, etc.
+- `glUV` is raw texture coordinates. Use for texture lookups, sampling, etc.
 
 ---
 MIT License
