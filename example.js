@@ -26,7 +26,6 @@ import miniChunks from "./miniChunks.js";
 const gl = new miniGL("canvas");
 gl.useChunks(miniChunks);
 
-/*
 // 1. Create a shader for generating noise
 const noiseShader = `#version 300 es
 precision highp float;
@@ -178,7 +177,7 @@ const colorNode = gl.shader(colorEffectShader, {
 gl.connect(noiseNode, colorNode, "uNoise");
 gl.connect(flowmapNode, colorNode, "uFlowmap");
 gl.output(colorNode);
-*/
+
 // Animation loop
 function animate() {
   gl.render();
@@ -220,21 +219,28 @@ gl.connect(sourceNode, targetNode, "inputName");
 gl.ignoreIntersection(); // Disable the intersection observer to always render
 gl.ignoreResize();       // Disable the resize handler for manual control
 `);
-/*
+
 // --- TEST 1: Three shader nodes (A, B, C), blend together ---
-const circleShader = (color) => `#version 300 es
+const circleShader = (color, id) => `#version 300 es
 precision highp float;
 in vec2 glCoord;
+uniform float glTime;
 out vec4 fragColor;
 void main() {
-  float d = length(glCoord - 0.5);
-  float circle = smoothstep(0.25, 0.24, d);
+  float d = length(glCoord - vec2(0.5, 0.5 + sin(glTime* 0.01+${id}/6.)*.125));
+  float circle = smoothstep(0.25, 0.2, d);
   fragColor = vec4(${color}, 1.0) * circle;
 }`;
 
-const nodeA = gl.shader(circleShader("1.0,0.0,0.0"), { name: "Red Circle" });
-const nodeB = gl.shader(circleShader("0.0,1.0,0.0"), { name: "Green Circle" });
-const nodeC = gl.shader(circleShader("0.0,0.0,1.0"), { name: "Blue Circle" });
+const nodeA = gl.shader(circleShader("1.0,0.0,0.0", "0."), {
+  name: "Red Circle",
+});
+const nodeB = gl.shader(circleShader("0.0,1.0,0.0", "1."), {
+  name: "Green Circle",
+});
+const nodeC = gl.shader(circleShader("0.0,0.0,1.0", "2."), {
+  name: "Blue Circle",
+});
 
 const blendAB = gl.blend({ blendMode: "add", name: "A+B" });
 gl.connect(nodeA, blendAB, "glBase");
@@ -245,7 +251,7 @@ gl.connect(blendAB, blendABC, "glBase");
 gl.connect(nodeC, blendABC, "glBlend");
 
 gl.output(blendABC);
-*/
+
 // --- TEST 2: MRT node, 3 outputs, sum in output node ---
 const mrtShader = `#version 300 es
 precision highp float;

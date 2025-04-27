@@ -30,6 +30,7 @@ class Node {
       );
     this.inputs.set(inputName, { node: sourceNode, output: outputName });
     sourceNode.outputs.add(this);
+    if (this.minigl) this.minigl._graphDirty = true;
     return this;
   }
 
@@ -38,6 +39,7 @@ class Node {
     if (connection) {
       connection.node.outputs.delete(this);
       this.inputs.delete(inputName);
+      if (this.minigl) this.minigl._graphDirty = true;
     }
     return this;
   }
@@ -197,6 +199,7 @@ class CanvasTextureNode extends TextureNode {
 
     this.drawCallback = options.drawCallback;
     this.updateCallback = options.update;
+    this.dirty = true;
 
     // Create canvas and context
     this.canvas = document.createElement("canvas");
@@ -206,6 +209,8 @@ class CanvasTextureNode extends TextureNode {
   }
 
   process(time) {
+    if (!this.dirty) return;
+    this.dirty = false;
     const gl = this.gl;
     const minigl = this.minigl;
 
@@ -250,6 +255,7 @@ class CanvasTextureNode extends TextureNode {
       return this;
     }
     this.drawCallback = drawCallback;
+    this.dirty = true;
     this.process(this.minigl.clock);
     return this;
   }
@@ -269,6 +275,7 @@ class ImageTextureNode extends TextureNode {
     this.image = null;
     this.isLoading = false;
     this.isLoaded = false;
+    this.dirty = true;
 
     // Start loading the image
     if (this.url) {
@@ -291,6 +298,7 @@ class ImageTextureNode extends TextureNode {
       this.height = this.height || image.height;
       this.isLoaded = true;
       this.isLoading = false;
+      this.dirty = true;
     };
 
     image.onerror = () => {
@@ -303,8 +311,8 @@ class ImageTextureNode extends TextureNode {
   }
 
   process(time) {
-    if (!this.isLoaded || !this.image) return;
-
+    if (!this.dirty || !this.isLoaded || !this.image) return;
+    this.dirty = false;
     const gl = this.gl;
     const minigl = this.minigl;
 
@@ -366,15 +374,11 @@ class ImageTextureNode extends TextureNode {
 class ShaderNode extends TextureNode {
   constructor(gl, options = {}) {
     super(gl, options);
-
     if (!options.fragmentShader) throw new Error("Fragment shader required");
-
     this.fragmentShader = options.fragmentShader;
-    this.vertexShader = options.vertexShader;
     this.uniforms = options.uniforms || {};
     this.framebuffer = null;
     this.program = null;
-    this.defaultVertexShader = options.defaultVertexShader;
 
     this.createRenderTarget();
   }
@@ -449,12 +453,10 @@ class ShaderNode extends TextureNode {
   ensureProgram() {
     if (this.program) return;
     if (!this.minigl) return;
-
-    const vertexSource =
-      this.vertexShader ||
-      this.defaultVertexShader ||
-      this.minigl.VERTEX_SHADER;
-    this.program = this.minigl.createProgram(vertexSource, this.fragmentShader);
+    this.program = this.minigl.createProgram(
+      this.minigl.VERTEX_SHADER,
+      this.fragmentShader
+    );
   }
 
   process(time) {
@@ -879,6 +881,7 @@ class VideoTextureNode extends TextureNode {
     this.url = options.url;
     this.video = null;
     this.isLoaded = false;
+    this.dirty = true;
     if (this.url) {
       this.load(this.url);
     }
@@ -898,12 +901,20 @@ class VideoTextureNode extends TextureNode {
       this.width = this.width || video.videoWidth;
       this.height = this.height || video.videoHeight;
       this.isLoaded = true;
+      this.dirty = true;
       video.play();
     });
     video.load();
   }
   process(time) {
-    if (!this.isLoaded || !this.video || this.video.readyState < 2) return;
+    if (
+      !this.dirty ||
+      !this.isLoaded ||
+      !this.video ||
+      this.video.readyState < 2
+    )
+      return;
+    this.dirty = false;
     const gl = this.gl;
     const minigl = this.minigl;
     if (!this.texture) {
@@ -941,6 +952,8 @@ class miniGL {
     this.isVisible = true; // For intersection observer
     this.eventController = new AbortController(); // For cleaning up event listeners
     this._shaderChunks = null;
+    this._topoOrder = null;
+    this._graphDirty = true;
 
     // Create a shared canvas for texture operations
     this._sharedCanvas = document.createElement("canvas");
@@ -980,16 +993,12 @@ class miniGL {
     this.floatSupported = false;
     if (this.gl.getExtension("EXT_color_buffer_float")) {
       this.floatSupported = true;
-      console.log(this.floatSupported);
       this.gl.getExtension("OES_texture_float_linear");
     }
 
-    // Enable blending
     this.gl.enable(this.gl.BLEND);
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
     this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
-
-    // Create full-screen triangle
     this.createFullScreenTriangle();
   }
 
@@ -1016,8 +1025,6 @@ class miniGL {
   }
 
   setupObservers() {
-    // ResizeObserver removed as it causes black frames during resize
-
     // IntersectionObserver to only render when visible
     this.intersectionObserver = new IntersectionObserver(
       (entries) => {
@@ -1036,7 +1043,6 @@ class miniGL {
 
   // Ignore the resize observer
   ignoreResize() {
-    // Remove the resize event listener if it exists
     if (this._resizeListener) {
       window.removeEventListener("resize", this._resizeListener);
       this._resizeListener = null;
@@ -1050,15 +1056,13 @@ class miniGL {
       this.intersectionObserver.unobserve(this.canvas);
       this.intersectionObserver.disconnect();
       this.intersectionObserver = null;
-      this.isVisible = true; // Always consider visible from now on
+      this.isVisible = true;
     }
     return this;
   }
 
   setupEventListeners() {
     const signal = this.eventController.signal;
-
-    // Set up resize handling via window event
     this._resizeListener = () => {
       if (this.canvas) {
         this.resize();
@@ -1115,6 +1119,8 @@ class miniGL {
       () => {
         this.mouseVelocity.x *= 0.5;
         this.mouseVelocity.y *= 0.5;
+        this.mouse.x = 0.5;
+        this.mouse.y = 0.5;
         if (Math.abs(this.mouseVelocity.x) < 0.01) this.mouseVelocity.x = 0;
         if (Math.abs(this.mouseVelocity.y) < 0.01) this.mouseVelocity.y = 0;
       },
@@ -1156,6 +1162,7 @@ class miniGL {
   // Add a node to the graph
   addNode(node) {
     this.nodes.set(node.id, node);
+    this._graphDirty = true;
     return node;
   }
 
@@ -1172,17 +1179,18 @@ class miniGL {
 
   // Topological sort utility (skip nodes with no output)
   _topoSort(outputNode) {
+    if (!this._graphDirty && this._topoOrder) return this._topoOrder;
     const visited = new Set();
     const order = [];
     function visit(node) {
       if (visited.has(node)) return;
       visited.add(node);
-      for (const conn of node.inputs.values()) {
-        visit(conn.node);
-      }
+      for (const conn of node.inputs.values()) visit(conn.node);
       order.push(node);
     }
     if (outputNode) visit(outputNode);
+    this._topoOrder = order;
+    this._graphDirty = false;
     return order;
   }
 
@@ -1198,11 +1206,10 @@ class miniGL {
       if (Math.abs(this.mouseVelocity.y) < 0.001) this.mouseVelocity.y = 0;
     }
     if (!this.outputNode) return;
-    // Topo sort and update all nodes in order
-    const frameId = this.clock;
     const order = this._topoSort(this.outputNode);
     for (const node of order) {
-      node.update(currentTime, frameId);
+      node.process(currentTime);
+      node.lastUpdateTime = currentTime;
     }
     this.renderToScreen();
   }
