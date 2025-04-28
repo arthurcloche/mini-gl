@@ -1,16 +1,48 @@
+<div align="center">
+  <img src="https://user-images.githubusercontent.com/your-image-path/minigl-mascot.png" alt="miniGL mascot waving" width="350"/>
+</div>
+
 # miniGL
 
-Minimal node-based WebGL2 creative coding engine. Compose fragment shaders, feedback, blend, image/video/canvas textures, and more with a simple, chainable API. Inspired by ShaderToy, but without the WebGL boilerplate.
+> "Why does drawing a circle in WebGL take 300 lines or a 2MB library?"  
+> miniGL: Minimal node-based WebGL2 creative coding engine. Compose fragment shaders, feedback, blend, image/video/canvas textures, and more with a simple, chainable API.  
+> No build step. No bloat. No tears.
 
-## Features
-- Node-based: connect shader, feedback, blend, texture, MRT, and more
-- Topological sort: stable, efficient updates
-- Feedback and ping-pong for GPGPU/iterative effects
-- Minimal, modern API
-- **Optional**: Shader snippet system (see below)
+---
+
+## What's This All About?
+
+miniGL was born out of pure frustration at how hard it is to just run a fragment shader on a canvas. If you want to make a feedback loop, blend a video and an image, or just play with pixels, you shouldn't have to learn Three.js, set up a build system, or write 200 lines of boilerplate.  
+miniGL is a node graph for WebGL2, inspired by ShaderToy, but with a modern, minimal, and fun API.
+
+---
+
+## How It All Connects (The Node Graph)
+
+Here's the big idea: you build a graph of nodes, each one does a thing (shader, blend, feedback, whatever), and you connect them up.  
+No more spaghetti code. No more "wait, which framebuffer is this?"
+
+```
+[Image]   [Canvas]   [Video]
+    \         |         /
+     \        |        /
+      [Blend/Shader/Group]   [Noise]
+                |         /
+             [Blend/Shader]
+                  |
+              [Output]
+```
+- Each [Node] is a processing step (shader, blend, feedback, etc)
+- You connect nodes with `gl.connect(a, b, 'inputName')`
+- The graph is topo-sorted and only reachable nodes are processed
+- Feedback nodes (pingpong) can create cycles for effects
+
+---
 
 ## Install
 Just drop `miniGL.js` and (optionally) `miniChunks.js` in your project. No build step needed.
+
+---
 
 ## Usage
 ```js
@@ -22,19 +54,15 @@ import miniChunks from './miniChunks.js';
 gl.useChunks(miniChunks); // enables <#tag> support in shaders
 ```
 
-## Uniforms
-Uniforms are values passed to shaders. You can set them at node creation or update them dynamically.
+---
 
-### How to use
-- Pass a `uniforms` object in the node options:
-  ```js
-  const node = gl.shader(fragmentShader, { uniforms: { uTime: 0, uAmount: 1.0 } });
-  ```
-- Update a uniform at runtime:
-  ```js
-  node.updateUniform('uAmount', 0.5);
-  ```
-- Uniforms can be numbers, booleans, arrays, `{x, y, z, w}` objects, or `{ texture }` objects.
+## Uniforms
+Uniforms are values you pass to shaders. Set them when you make a node, or update them later. They can be numbers, booleans, arrays, `{x, y, z, w}` objects, or `{ texture }` objects.
+
+```js
+const node = gl.shader(fragmentShader, { uniforms: { uTime: 0, uAmount: 1.0 } });
+node.updateUniform('uAmount', 0.5);
+```
 
 ### Built-in Uniforms (auto-injected)
 - `glResolution` — `{x, y}`: canvas size in pixels
@@ -47,31 +75,15 @@ Uniforms are values passed to shaders. You can set them at node creation or upda
 - `glCoord` — aspect-ratio corrected coordinates (use for round shapes)
 - `glUV` — raw texture coordinates (use for texture lookups)
 
-## Node Types & Examples
+---
 
-### 1. Shader Node
-**Description:** Runs a custom fragment shader and outputs a texture.
-**Options:**
+## Node Types (What Can I Plug In?)
+
+### Shader Node
+Run a custom fragment shader and get a texture out. Give it your GLSL, get pixels. You can set uniforms, size, filtering, etc.
+
 ```js
-{
-  uniforms: { ... }, // uniforms for the shader
-  vertexShader: '...', // optional custom vertex shader
-  width: 512, // optional, default: canvas width
-  height: 512, // optional, default: canvas height
-  filter: 'LINEAR' | 'NEAREST',
-  wrap: 'CLAMP_TO_EDGE' | 'REPEAT',
-  mipmap: true | false,
-  format: 'FLOAT' | 'UNSIGNED_BYTE',
-  name: 'MyShader',
-}
-```
-**Template:**
-```js
-const node = gl.shader(fragmentShader, { uniforms: { uTime: 0 } });
-```
-**Example:**
-```js
-const shaderNode = gl.shader(`
+const node = gl.shader(`
   #version 300 es
   precision highp float;
   uniform float uTime;
@@ -82,23 +94,12 @@ const shaderNode = gl.shader(`
     fragColor = vec4(vec3(d < 0.25 + 0.1 * sin(uTime)), 1.0);
   }
 `, { uniforms: { uTime: 0 } });
-gl.output(shaderNode);
+gl.output(node);
 ```
 
-### 2. Pingpong (Feedback) Node
-**Description:** Runs a fragment shader with feedback from the previous frame (for trails, fluid, etc).
-**Options:**
-```js
-{
-  uniforms: { ... },
-  width, height, filter, wrap, mipmap, format, name // same as shader
-}
-```
-**Template:**
-```js
-const node = gl.pingpong(fragmentShader, { uniforms: { ... } });
-```
-**Example:**
+### Pingpong (Feedback) Node
+Want trails, fluid, or feedback? This node gives your shader the previous frame as a texture. Just use `glPrevious` in your shader.
+
 ```js
 const feedback = gl.pingpong(`
   #version 300 es
@@ -114,24 +115,11 @@ const feedback = gl.pingpong(`
 gl.output(feedback);
 ```
 
-### 3. Blend Node
-**Description:** Blends two textures using a blend mode and opacity.
-**Options:**
+### Blend Node
+Blend two textures together. Pick a blend mode (`add`, `multiply`, `screen`, etc) and an opacity. Connect your base and blend nodes.
+
 ```js
-{
-  blendMode: 'add' | 'multiply' | 'screen' | ...,
-  opacity: 1.0, // blend layer opacity
-  uniforms: { ... },
-  width, height, filter, wrap, mipmap, format, name
-}
-```
-**Template:**
-```js
-const node = gl.blend({ blendMode: 'add', opacity: 1.0 });
-```
-**Example:**
-```js
-const a = gl.shader(...); // any node
+const a = gl.shader(...);
 const b = gl.shader(...);
 const blend = gl.blend({ blendMode: 'add', opacity: 1.0 });
 gl.connect(a, blend, 'glBase');
@@ -139,58 +127,25 @@ gl.connect(b, blend, 'glBlend');
 gl.output(blend);
 ```
 
-### 4. Image Node
-**Description:** Loads an image as a texture.
-**Options:**
-```js
-{
-  url: 'img.jpg',
-  width, height, filter, wrap, mipmap, name
-}
-```
-**Template:**
-```js
-const node = gl.image('img.jpg', { width: 256, height: 256 });
-```
-**Example:**
+### Image Node
+Load an image as a texture. That's it.
+
 ```js
 const img = gl.image('myimg.jpg');
 gl.output(img);
 ```
 
-### 5. Video Node
-**Description:** Loads a video as a texture (auto-plays, loops, muted).
-**Options:**
-```js
-{
-  url: 'vid.mp4',
-  width, height, filter, wrap, mipmap, name
-}
-```
-**Template:**
-```js
-const node = gl.video('myvid.mp4', { width: 256, height: 256 });
-```
-**Example:**
+### Video Node
+Load a video as a texture. Auto-plays, loops, muted. No drama.
+
 ```js
 const vid = gl.video('myvid.mp4');
 gl.output(vid);
 ```
 
-### 6. Canvas Node
-**Description:** Uses a 2D canvas as a texture, updated by a draw callback.
-**Options:**
-```js
-{
-  drawCallback: (ctx, w, h) => { ... },
-  width, height, filter, wrap, mipmap, name
-}
-```
-**Template:**
-```js
-const node = gl.canvas((ctx, w, h) => { ... }, { width: 256, height: 256 });
-```
-**Example:**
+### Canvas Node
+Use a 2D canvas as a texture, updated by your draw callback.
+
 ```js
 const canvasNode = gl.canvas((ctx, w, h) => {
   ctx.fillStyle = 'red';
@@ -201,24 +156,10 @@ const canvasNode = gl.canvas((ctx, w, h) => {
 gl.output(canvasNode);
 ```
 
-### 7. MRT (Multi-Render Target) Node
-**Description:** Runs a shader that outputs to multiple textures in one pass.
-**Options:**
+### MRT (Multi-Render Target) Node
+Run a shader that spits out multiple textures in one pass. Useful for GPGPU or fancy effects.
+
 ```js
-{
-  fragmentShader: '...',
-  numTargets: 2-4,
-  uniforms: { ... },
-  width, height, filter, wrap, mipmap, format, name
-}
-```
-**Template:**
-```js
-const node = gl.mrt(fragmentShader, { numTargets: 3, uniforms: { ... } });
-```
-**Example:**
-```js
-// Use glCoord for round shapes (aspect-ratio corrected)
 const mrtShader = `#version 300 es
 precision highp float;
 in vec2 glCoord;
@@ -249,24 +190,9 @@ gl.connect(mrt, sum, 'texB', '2');
 gl.output(sum);
 ```
 
-### 8. Group Node (Subgraph)
-**Description:** Build a subgraph with the same API as miniGL, for custom multi-pass effects.
-**Options:**
-```js
-{
-  width, height, name // (optional)
-}
-```
-**Template:**
-```js
-const group = gl.group();
-const a = group.shader(...);
-const b = group.shader(...);
-group.connect(a, b, 'uInput');
-group.output(b);
-gl.output(group);
-```
-**Example:**
+### Group Node (Subgraph)
+Build a subgraph for custom multi-pass effects. It's like a mini miniGL inside your miniGL.
+
 ```js
 const group = gl.group();
 const a = group.shader(...);
@@ -276,28 +202,7 @@ group.output(b);
 gl.output(group);
 ```
 
-**Note:** Only `shader`, `pingpong`, and `mrt` nodes support `.updateUniform(key, value)`.
-
-## How miniGL Works (Node Graph Example)
-
-```
-[Image]   [Canvas]   [Video]
-    \         |         /
-     \        |        /
-      [Blend/Shader/Group]   [Noise]
-                |         /
-             [Blend/Shader]
-                  |
-              [Output]
-```
-- Each [Node] is a processing step (shader, blend, feedback, etc)
-- You connect nodes with `gl.connect(a, b, 'inputName')`
-- The graph is topo-sorted and only reachable nodes are processed
-- Feedback nodes (pingpong) can create cycles for effects
-
-## Shader Snippets (Optional)
-- To use `<#category.name>` tags in your GLSL, you **must** call `gl.useChunks(miniChunks)` with your chunk library.
-- If you never call `useChunks`, `<#tags>` are ignored and shaders are not preprocessed (zero overhead).
+---
 
 ## Connecting Nodes
 ```js
@@ -314,14 +219,25 @@ gl.output(node); // Set the final node to render to screen
 ## Blend Modes
 - `add`, `multiply`, `screen`, `overlay`, `normal`, etc. (see your chunk lib for all)
 
+---
+
+## Shader Snippets (Optional)
+Want to use `<#category.name>` tags in your GLSL? Call `gl.useChunks(miniChunks)` with your chunk library. If you don't, `<#tags>` are ignored and shaders are not preprocessed (zero overhead).
+
+---
+
 ## Minimal Test Suite
-- See `test/graph.test.js` for dry graph logic tests (no rendering, just node plumbing).
+See `test/graph.test.js` for dry graph logic tests (no rendering, just node plumbing).
+
+---
 
 ## Performance
 - Each node = 1 framebuffer/render pass (except MRT, which does N outputs in 1 pass)
 - Modern browsers easily handle 10–30 nodes at 1080p, more at lower res or with simple shaders
 - Bottleneck: VRAM, shader complexity, and framebuffer switches
 - For creative coding/interactive art, you'll hit UI/CPU limits before GPU limits in most cases
+
+---
 
 ## Coordinates: glCoord vs glUV
 - `glCoord` is aspect-ratio corrected. Use for geometry, round shapes, SDFs, etc.
