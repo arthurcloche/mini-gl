@@ -1,7 +1,3 @@
-<div align="center">
-  <img src="https://user-images.githubusercontent.com/your-image-path/minigl-mascot.png" alt="miniGL mascot waving" width="350"/>
-</div>
-
 # miniGL
 
 > "Why does drawing a circle in WebGL take 300 lines or a 2MB library?"  
