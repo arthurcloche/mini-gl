@@ -1,5 +1,6 @@
-# miniGL
 
+![minigl](https://github.com/user-attachments/assets/f064614c-3aac-4d3d-a3da-e1e40c1212c6)
+# miniGL
 > "Why does drawing a circle in WebGL take 300 lines or a 2MB library?"  
 > miniGL: Minimal node-based WebGL2 creative coding engine. Compose fragment shaders, feedback, blend, image/video/canvas textures, and more with a simple, chainable API.  
 > No build step. No bloat. No tears.
