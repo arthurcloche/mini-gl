@@ -7,8 +7,8 @@ import miniGL from "./miniGL.js";
   //   ctx.fillRect(0, 0, width, height);
   // });
 
-  const flowmapPass = gl.pingpong({
-    fragmentShader: `#version 300 es
+  const flowmapPass = gl.pingpong(
+    `#version 300 es
     precision highp float;
   
     in vec2 vTexCoord;
@@ -39,16 +39,18 @@ import miniGL from "./miniGL.js";
       
       fragColor = vec4(color.rgb,1.);
     }`,
-    uniforms: {
-      uFalloff: 0.45,
-      uAlpha: 1,
-      uDissipation: 0.98,
-    },
-    format: gl.FLOAT,
-  });
+    {
+      uniforms: {
+        uFalloff: 0.45,
+        uAlpha: 1,
+        uDissipation: 0.98,
+      },
+      format: gl.FLOAT,
+    }
+  );
 
-  const noisePass = gl.shader({
-    fragmentShader: `#version 300 es
+  const noisePass = gl.shader(
+    `#version 300 es
     precision highp float;
 
     in vec2 vTexCoord;
@@ -68,10 +70,10 @@ import miniGL from "./miniGL.js";
       // Sample the flowmap and canvas texture
       vec2 position = gl_FragCoord.xy;
       fragColor = vec4(vec3(hash12(position)),1.);
-    }`,
-  });
+    }`
+  );
 
-  const waterTexture = gl.createCanvasTexture((ctx, width, height) => {
+  const waterTexture = gl.canvas((ctx, width, height) => {
     // Create a blue water-like texture with some patterns
     const gradient = ctx.createLinearGradient(0, 0, width, height);
     gradient.addColorStop(0, "#1E3B70");
@@ -96,8 +98,8 @@ import miniGL from "./miniGL.js";
     }
   });
 
-  const visualizePass = gl.shader({
-    fragmentShader: `#version 300 es
+  const visualizePass = gl.shader(
+    `#version 300 es
     precision highp float;
 
     uniform vec2 glCoord;
@@ -116,12 +118,14 @@ import miniGL from "./miniGL.js";
       vec3 water = texture(uWaterTexture, glCoord).rgb;
       fragColor = vec4(water, 1.0);
     }`,
-    uniforms: {
-      uNoiseTexture: noisePass,
-      uMouseTrailTexture: flowmapPass,
-      uWaterTexture: waterTexture,
-    },
-  });
+    {
+      uniforms: {
+        uNoiseTexture: noisePass,
+        uMouseTrailTexture: flowmapPass,
+        uWaterTexture: waterTexture,
+      },
+    }
+  );
   gl.output(visualizePass);
   const render = () => {
     gl.render();
