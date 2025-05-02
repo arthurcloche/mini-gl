@@ -1,13 +1,8 @@
 /**
  * miniGL_node.js - A node-based WebGL2 rendering pipeline
  * Focused on flexible composition of shader effects with node architecture
- *
- * TODO:
- * [ ] Implement topological sorting for dependency resolution
- * [ ] Dependency tracking and execution optimization
- * [ ] Circular dependency handling for feedback loops
- * [ ] Render queue optimization
- */
+ * Made w/ love for Shopify, 2025
+ **/
 
 class Node {
   constructor(gl, options = {}) {
@@ -543,7 +538,6 @@ class FeedbackNode extends ShaderNode {
       this.textureOptions.wrap === "REPEAT" ? gl.REPEAT : gl.CLAMP_TO_EDGE;
     const internalFormat = useFloat ? gl.RGBA32F : gl.RGBA8;
     const type = useFloat ? gl.FLOAT : gl.UNSIGNED_BYTE;
-    console.log(useFloat);
     if (!this.textureB) this.textureB = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.textureB);
 
@@ -1083,15 +1077,15 @@ class miniGL {
         const now = performance.now();
         const deltaTime = now - this.lastMouseUpdateTime;
 
-        if (deltaTime > 0) {
-          const timeFactor = Math.min(1000 / 60, deltaTime) / (1000 / 60);
-          this.mouseVelocity.x = (this.mouse.x - this.prevMouse.x) / timeFactor;
-          this.mouseVelocity.y = (this.mouse.y - this.prevMouse.y) / timeFactor;
+        // if (deltaTime > 0) {
+        const timeFactor = Math.min(1000 / 60, deltaTime) / (1000 / 60);
+        this.mouseVelocity.x = (this.mouse.x - this.prevMouse.x) / timeFactor;
+        this.mouseVelocity.y = (this.mouse.y - this.prevMouse.y) / timeFactor;
 
-          // const damping = 0.8;
-          // this.mouseVelocity.x *= damping;
-          // this.mouseVelocity.y *= damping;
-        }
+        // const damping = 0.95;
+        // this.mouseVelocity.x *= damping;
+        // this.mouseVelocity.y *= damping;
+        // }
 
         this.lastMouseUpdateTime = now;
       },
@@ -1553,7 +1547,7 @@ class miniGL {
   }
 
   // Factory method for canvas texture node
-  createCanvasTexture(drawCallback, options = {}) {
+  createCanvas2DTexture(drawCallback, options = {}) {
     const node = new CanvasTextureNode(this.gl, {
       drawCallback,
       width: options.width || this.canvas.width,
@@ -1570,9 +1564,9 @@ class miniGL {
     return this.addNode(node);
   }
 
-  // Shorter alias for createCanvasTexture
-  canvas(drawCallback, options = {}) {
-    return this.createCanvasTexture(drawCallback, options);
+  // Shorter alias for createCanvas2DTexture
+  canvas2D(drawCallback, options = {}) {
+    return this.createCanvas2DTexture(drawCallback, options);
   }
 
   // Create a blend shader node

@@ -1,31 +1,13 @@
 import miniGL from "./miniGL.js";
 (async () => {
   const gl = new miniGL("glCanvas");
+  console.log(gl);
+  // const blankTexture = gl.canvas((ctx, width, height) => {
+  //   ctx.fillStyle = "rgba(0,0,0,0)";
+  //   ctx.fillRect(0, 0, width, height);
+  // });
 
-  const blankTexture = gl.canvasTexture((ctx, width, height) => {
-    ctx.fillStyle = "rgba(0,0,0,0)";
-    ctx.fillRect(0, 0, width, height);
-  });
-
-  const myTexture = gl.canvasTexture(
-    (ctx, width, height) => {
-      ctx.fillStyle = "blue";
-      ctx.fillRect(0, 0, width, height);
-    },
-    {
-      update: (ctx, width, height, time) => {
-        ctx.fillStyle = "blue";
-        ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = "white";
-        const x = (Math.sin(time * 0.01) * width) / 2 + width / 2;
-        ctx.beginPath();
-        ctx.arc(x, height / 2, 20, 0, Math.PI * 2);
-        ctx.fill();
-      },
-    }
-  );
-
-  const flowmapPass = gl.createPingPongPass({
+  const flowmapPass = gl.pingpong({
     fragmentShader: `#version 300 es
     precision highp float;
   
@@ -65,7 +47,7 @@ import miniGL from "./miniGL.js";
     format: gl.FLOAT,
   });
 
-  const noisePass = gl.createShaderPass({
+  const noisePass = gl.shader({
     fragmentShader: `#version 300 es
     precision highp float;
 
@@ -89,7 +71,7 @@ import miniGL from "./miniGL.js";
     }`,
   });
 
-  const waterTexture = gl.canvasTexture((ctx, width, height) => {
+  const waterTexture = gl.createCanvasTexture((ctx, width, height) => {
     // Create a blue water-like texture with some patterns
     const gradient = ctx.createLinearGradient(0, 0, width, height);
     gradient.addColorStop(0, "#1E3B70");
@@ -114,11 +96,11 @@ import miniGL from "./miniGL.js";
     }
   });
 
-  const visualizePass = gl.createShaderPass({
+  const visualizePass = gl.shader({
     fragmentShader: `#version 300 es
     precision highp float;
 
-    in vec2 vTexCoord;
+    uniform vec2 glCoord;
     uniform sampler2D uTexture;
     uniform sampler2D uNoiseTexture;
     uniform sampler2D uMouseTrailTexture;
@@ -130,17 +112,17 @@ import miniGL from "./miniGL.js";
 
     void main() {
       // Get flow data
-      vec3 flow = texture(uMouseTrailTexture, vTexCoord).rgb;
-      vec3 water = texture(uWaterTexture, vTexCoord).rgb;
+      vec3 flow = texture(uMouseTrailTexture, glCoord).rgb;
+      vec3 water = texture(uWaterTexture, glCoord).rgb;
       fragColor = vec4(water, 1.0);
     }`,
     uniforms: {
       uNoiseTexture: noisePass,
       uMouseTrailTexture: flowmapPass,
-      uWaterTexture: myTexture,
+      uWaterTexture: waterTexture,
     },
   });
-
+  gl.output(visualizePass);
   const render = () => {
     gl.render();
     requestAnimationFrame(render);

@@ -65,9 +65,10 @@ uniform vec2 glVelocity;
 uniform vec2 glResolution;
 uniform float glRatio;    
 uniform float glTime;
-uniform float glFalloff;
-uniform float glAlpha;
-uniform float glDissipation;
+uniform float uFalloff;
+uniform float uAlpha;
+uniform float uDissipation;
+uniform vec2 uVelocity;
 in vec2 glUV;
 in vec2 glCoord;
     
@@ -77,19 +78,19 @@ const vec2 vFactor = vec2(10.0);
 
 void main() {
   // Sample the previous state with dissipation
-  vec4 color = texture(glPrevious, glUV) * glDissipation;
+  vec4 color = texture(glPrevious, glUV) * uDissipation;
   
   // Get cursor position relative to current pixel
   vec2 cursor = glCoord - vec2(glMouse.x, glMouse.y);
   
   // Create stamp based on velocity
   vec3 stamp = vec3(
-    glVelocity * vFactor * vec2(1.0, -1.0), 
-    1.0 - pow(1.0 - min(1.0, length(glVelocity * vFactor)), 3.0)
+    uVelocity * vFactor * vec2(1.0, -1.0), 
+    1.0 - pow(1.0 - min(1.0, length(uVelocity * vFactor)), 3.0)
   );
   
   
-  float falloff = smoothstep(glFalloff, 0.0, length(cursor)) * glAlpha;
+  float falloff = smoothstep(uFalloff, 0.0, length(cursor)) * uAlpha;
   
   // Mix previous state with new stamp
   color.rgb = mix(color.rgb, stamp, vec3(falloff));
@@ -152,14 +153,18 @@ void main() {
 
 // 3. Create nodes and connect them
 const noiseNode = gl.shader(noiseShader, { name: "Noise Generator" });
-
+const blankTexture = gl.canvas2D((ctx, width, height) => {
+  ctx.fillStyle = "rgba(0,0,0,0)";
+  ctx.fillRect(0, 0, width, height);
+});
 // Create flowmap with feedback pass
 const flowmapNode = gl.pingpong(flowmapShader, {
   name: "Flowmap Generator",
   uniforms: {
-    glFalloff: 0.4, // Slightly wider falloff
-    glAlpha: 1, // Lower intensity
-    glDissipation: 0.99, // Slightly more persistent
+    uFalloff: 0.4, // Slightly wider falloff
+    uAlpha: 1, // Lower intensity
+    uDissipation: 0.99, // Slightly more persistent
+    uVelocity: [0, 0],
   },
   type: "FLOAT",
   //   filter: "gl.LINEAR",
@@ -174,12 +179,33 @@ const colorNode = gl.shader(colorEffectShader, {
 });
 
 // Connect nodes
-gl.connect(noiseNode, colorNode, "uNoise");
-gl.connect(flowmapNode, colorNode, "uFlowmap");
-gl.output(colorNode);
+// gl.connect(noiseNode, colorNode, "uNoise");
+// gl.connect(flowmapNode, colorNode, "uFlowmap");
+gl.output(flowmapNode);
 
 // Animation loop
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+function len(x, y) {
+  const epsilon = 1e-10; // Smaller epsilon for squared values
+  return x * x + y * y > epsilon;
+}
+
 function animate() {
+  const vellen = len(gl.mouseVelocity.x, gl.mouseVelocity.y);
+
+  const velx = lerp(
+    gl.mouseVelocity.x,
+    flowmapNode.uniforms["uVelocity"][0],
+    vellen > 0 ? 0.9 : 0.2
+  );
+  const vely = lerp(
+    gl.mouseVelocity.y,
+    flowmapNode.uniforms["uVelocity"][1],
+    vellen > 0 ? 0.9 : 0.2
+  );
+  flowmapNode.updateUniform("uVelocity", [velx, vely]);
   gl.render();
   requestAnimationFrame(animate);
 }
@@ -250,7 +276,7 @@ const blendABC = gl.blend({ blendMode: "add", name: "A+B+C" });
 gl.connect(blendAB, blendABC, "glBase");
 gl.connect(nodeC, blendABC, "glBlend");
 
-gl.output(blendABC);
+// gl.output(blendABC);
 
 // --- TEST 2: MRT node, 3 outputs, sum in output node ---
 const mrtShader = `#version 300 es
@@ -288,4 +314,4 @@ gl.connect(mrtNode, sumNode, "texR", "0");
 gl.connect(mrtNode, sumNode, "texG", "1");
 gl.connect(mrtNode, sumNode, "texB", "2");
 // Uncomment to test MRT output:
-gl.output(sumNode);
+// gl.output(sumNode);
