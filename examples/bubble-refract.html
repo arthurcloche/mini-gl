@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bubble Refract (Negative Fresnel) - miniGL</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #222;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: white;
+    }
+    
+    .container {
+      max-width: 900px;
+      width: 100%;
+      text-align: center;
+    }
+    
+    h1 {
+      margin-bottom: 2rem;
+    }
+    
+    canvas {
+      width: 100%;
+      aspect-ratio: 16/9;
+      max-height: 80vh;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+  </style>
+  
+  <!-- Load a fallback font while we wait for Hubot Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500&display=swap" rel="stylesheet">
+  
+  <!-- Custom font loader for Hubot Sans -->
+  <style>
+    @font-face {
+      font-family: 'Hubot Sans';
+      src: url('https://assets.unicorn.studio/fonts/google_fonts/pe0BMIiULYxOvxVLbVwhONyy6zb7yFM9V5G3iZ3X0avsIiCxjLsC1bZdgLDVwVqcXQ.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bubble Refract Effect</h1>
+    <p>Move your mouse over the canvas to interact with the effect</p>
+    <canvas id="canvas"></canvas>
+  </div>
+  
+  <script type="module" src="bubble-refract.js"></script>
+</body>
+</html> 

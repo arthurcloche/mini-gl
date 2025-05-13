@@ -1,0 +1,136 @@
+{
+  "history": [
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "layerType": "effect",
+      "type": "gradient",
+      "usesPingPong": false,
+      "speed": 0.25,
+      "trackMouse": 0,
+      "mouseMomentum": 0,
+      "animating": false,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision highp float;in vec2 vTextureCoord;uniform vec2 uMousePos; vec3 getColor(int index) { switch(index) { case 0: return vec3(0.9333333333333333, 0.9333333333333333, 0.9333333333333333); case 1: return vec3(0, 0, 0); case 2: return vec3(0, 0, 0); case 3: return vec3(0, 0, 0); case 4: return vec3(0, 0, 0); case 5: return vec3(0, 0, 0); case 6: return vec3(0, 0, 0); case 7: return vec3(0, 0, 0); case 8: return vec3(0, 0, 0); case 9: return vec3(0, 0, 0); case 10: return vec3(0, 0, 0); case 11: return vec3(0, 0, 0); case 12: return vec3(0, 0, 0); case 13: return vec3(0, 0, 0); case 14: return vec3(0, 0, 0); case 15: return vec3(0, 0, 0); default: return vec3(0.0); } }const float PI = 3.14159265;vec2 rotate(vec2 coord, float angle) { float s = sin(angle); float c = cos(angle); return vec2( coord.x * c - coord.y * s, coord.x * s + coord.y * c ); }out vec4 fragColor;vec3 getColor(vec2 uv) {return vec3(0.9333333333333333, 0.9333333333333333, 0.9333333333333333); }void main() {vec2 uv = vTextureCoord; vec2 pos = vec2(0.5, 0.5) + mix(vec2(0), (uMousePos-0.5), 0.0000); uv -= pos; uv /= (0.5000*2.); uv = rotate(uv, (0.0000 - 0.5) * 2. * PI); vec4 color = vec4(getColor(uv), 1.); fragColor = color; }"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;uniform mat4 uMVMatrix; uniform mat4 uPMatrix;out vec2 vTextureCoord; out vec3 vVertexPosition;void main() { gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); vTextureCoord = aTextureCoord; }"
+      ],
+      "data": {
+        "downSample": 0.5,
+        "depth": false,
+        "uniforms": {},
+        "isBackground": true
+      }
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "locked": false,
+      "aspectRatio": 3.787905346187555,
+      "layerName": "",
+      "userDownsample": 1,
+      "isElement": true,
+      "opacity": 1,
+      "effects": [],
+      "displace": 0,
+      "trackMouse": 0,
+      "anchorPoint": "center",
+      "mouseMomentum": 0,
+      "blendMode": "NORMAL",
+      "bgDisplace": 0,
+      "mask": 0,
+      "maskBackground": {
+        "type": "Vec3",
+        "_x": 0,
+        "_y": 0,
+        "_z": 0
+      },
+      "maskAlpha": 0,
+      "maskDepth": 0,
+      "dispersion": 0,
+      "axisTilt": 0,
+      "states": {
+        "appear": [],
+        "scroll": [],
+        "hover": []
+      },
+      "layerType": "text",
+      "justCreated": false,
+      "isSafari": false,
+      "width": 1.08515625,
+      "widthMode": "relative",
+      "height": 517.52,
+      "heightMode": "relative",
+      "left": 0.5,
+      "leftMode": "relative",
+      "top": 0.5347111111111111,
+      "topMode": "relative",
+      "rotation": 0,
+      "fontSize": 0.158,
+      "lineHeight": 1.1373066104078762,
+      "letterSpacing": 0,
+      "fontFamily": "Hubot Sans",
+      "fontStyle": "500",
+      "fontWeight": "400",
+      "textAlign": "center",
+      "textContent": "NEGATIVE FRESNEL",
+      "fill": ["#000000"],
+      "gradientAngle": 0,
+      "gradientType": "linear",
+      "fontSizeMode": "relative",
+      "fontCSS": {
+        "family": "Hubot Sans",
+        "src": "https://assets.unicorn.studio/fonts/google_fonts/pe0BMIiULYxOvxVLbVwhONyy6zb7yFM9V5G3iZ3X0avsIiCxjLsC1bZdgLDVwVqcXQ.ttf"
+      },
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision mediump float; in vec2 vTextureCoord; in vec3 vVertexPosition;uniform sampler2D uBgTexture; uniform sampler2D uTexture; uniform vec2 uMousePos; uniform int uSampleBg;out vec4 fragColor;void main() { vec2 uv = vTextureCoord; vec2 pos = mix(vec2(0), (uMousePos - 0.5), 0.0000);uv = uv - pos;vec4 color = texture(uTexture, uv); vec4 background = vec4(0);if(uSampleBg == 1) { background = texture(uBgTexture, vTextureCoord); }color = mix(background, color / max(color.a, 0.0001), color.a * 1.0000);fragColor = color; }"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;uniform mat4 uMVMatrix; uniform mat4 uPMatrix; uniform mat4 uTextureMatrix; uniform vec2 uMousePos;out vec2 vTextureCoord; out vec3 vVertexPosition;void main() { float angleX = uMousePos.y * 0.5 - 0.25; float angleY = (1.-uMousePos.x) * 0.5 - 0.25; mat4 rotateX = mat4(1.0, 0.0, 0.0, 0.0, 0.0, cos(angleX), -sin(angleX), 0.0, 0.0, sin(angleX), cos(angleX), 0.0, 0.0, 0.0, 0.0, 1.0); mat4 rotateY = mat4(cos(angleY), 0.0, sin(angleY), 0.0, 0.0, 1.0, 0.0, 0.0, -sin(angleY), 0.0, cos(angleY), 0.0, 0.0, 0.0, 0.0, 1.0);mat4 rotationMatrix = rotateX * rotateY; gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); vVertexPosition = (rotationMatrix * vec4(aVertexPosition, 1.0)).xyz; vTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy; }"
+      ],
+      "data": {
+        "uniforms": {}
+      },
+      "windowWidth": 1440
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "layerType": "effect",
+      "type": "sphere",
+      "usesPingPong": false,
+      "trackMouse": 1,
+      "mouseMomentum": 1,
+      "animating": false,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision mediump float; in vec3 vVertexPosition; in vec2 vTextureCoord; uniform sampler2D uTexture; uniform vec2 uMousePos; uniform vec2 uResolution;const float STEPS = 16.0; const float PI = 3.1415926;vec3 chromaticAbberation(vec2 st, float angle, float amount, float blend) { float aspectRatio = uResolution.x/uResolution.y; float rotation = angle * 360.0 * PI / 180.0; vec2 aberrated = amount * vec2(0.1 * sin(rotation) * aspectRatio, 0.1 * cos(rotation)); aberrated *= distance(st, vec2(0.5)) * 2.0; vec4 red = vec4(0); vec4 blue = vec4(0); vec4 green = vec4(0); float invSteps = 1.0 / STEPS; float invStepsHalf = invSteps * 0.5; for(float i = 1.0; i <= STEPS; i++) { vec2 offset = aberrated * (i * invSteps); red += texture(uTexture, st - offset) * invSteps; blue += texture(uTexture, st + offset) * invSteps; }for (float i = 0.0; i <= STEPS; i++) { vec2 offset = aberrated * ((i * invSteps) - 0.5); green += texture(uTexture, st + offset) * invSteps; } return vec3(red.r, green.g, blue.b); }vec2 sphericalTransformation( float u, float v, float uCenter, float vCenter, float lensRadius, float tau) { float aspectRatio = uResolution.x/uResolution.y; u -= uCenter; v -= vCenter;float s = sqrt(u * u + v * v); if (s > lensRadius) return vec2(u + uCenter, v + vCenter);float z = sqrt(lensRadius * lensRadius - s * s);float uAlpha = (1.0 - (1.0 / tau)) * asin(u / lensRadius); float vAlpha = (1.0 - (1.0 / tau)) * asin(v / lensRadius);u = uCenter + z * sin(uAlpha); v = vCenter + z * sin(vAlpha);return vec2(u/aspectRatio, v); }float circularIn(float t) { return 1.0 - sqrt(1.0 - t * t); }vec2 fisheyeTransformation( float u, float v, float uCenter, float vCenter, float lensRadius, float distortionScale ) { float aspectRatio = uResolution.x / uResolution.y; vec2 dir = vec2(u - uCenter, v - vCenter); dir.x /= lensRadius; dir.y /= lensRadius; float dist = length(dir) * 0.15; if (dist < 1.0) { float theta = atan(dir.y, dir.x); float r = dist * 2.0 * PI; float z = sqrt(1.0 - r * r) + 0.25; float rDist = atan(r, z) / PI; float newDist = mix(dist, rDist, 5.); dir.x = newDist * cos(theta); dir.y = newDist * sin(theta); } dir.x *= lensRadius; dir.y *= lensRadius; return mix(vec2(u/aspectRatio, v), vec2(uCenter/aspectRatio, vCenter) + dir, 1.0000); }vec2 discTransformation( float u, float v, float uCenter, float vCenter, float lensRadius, float distortionScale) { float aspectRatio = uResolution.x/uResolution.y; u -= uCenter; v -= vCenter;float s = sqrt(u * u + v * v); if (s > lensRadius) return vec2(u + uCenter, v + vCenter); float r = sqrt(u * u + v * v) / lensRadius; if(r == 0.0) return vec2(uCenter, vCenter);r = pow(r, distortionScale);float theta = atan(r); float rad = theta / r;u = rad * u + uCenter; v = rad * v + vCenter;return vec2(u/aspectRatio, v); }out vec4 fragColor; void main() { vec2 uv = vTextureCoord; vec4 color = texture(uTexture, uv); float aspectRatio = uResolution.x/uResolution.y; uv.x = uv.x * aspectRatio; vec2 sphereCoords = uv; vec2 pos = vec2(0.5, 0.5) + mix(vec2(0), (uMousePos-0.5), 1.0000); pos.x *= aspectRatio;float radius = 0.8980 * uResolution.x/max(uResolution.x, uResolution.y);if(0 == 0) { sphereCoords = sphericalTransformation( mix(sphereCoords.x, 1.-sphereCoords.x, 0.0000), mix(sphereCoords.y, 1.-sphereCoords.y, 0.0000), mix(pos.x, 1.-pos.x, 0.0000), mix(pos.y, 1.-pos.y, 0.0000), radius/2., 1. + 1.0000 * 9. ); } else if(0 == 1) { sphereCoords = discTransformation( mix(sphereCoords.x, 1.-sphereCoords.x, 0.0000), mix(sphereCoords.y, 1.-sphereCoords.y, 0.0000), mix(pos.x, 1.-pos.x, 0.0000), mix(pos.y, 1.-pos.y, 0.0000), radius/2., 1. + 1.0000 * 9. ); } else if(0 == 2) { sphereCoords = fisheyeTransformation( mix(sphereCoords.x, 1.-sphereCoords.x, 0.0000), mix(sphereCoords.y, 1.-sphereCoords.y, 0.0000), mix(pos.x, 1.-pos.x, 0.0000), mix(pos.y, 1.-pos.y, 0.0000), radius/2., 1. + 1.0000 * 9. ); }vec2 scaledCoords = (sphereCoords - 0.5) + 0.5; vec4 sphere = texture(uTexture, clamp(scaledCoords, 0.0, 1.0)); float distFromPos = distance(uv, pos); float insideSphere = distFromPos < radius/2. ? 1. : 0.; float insideSphereAlpha = distFromPos + 0.002 < radius/2. ? 1. : 0.; sphere.rgb = chromaticAbberation(scaledCoords, atan(scaledCoords.y, scaledCoords.x), distFromPos * 0.9500, 1.0); color = mix(color, sphere, insideSphere); color.rgb += vec3((0.0000-0.5)*2.) * mix(0., circularIn(smoothstep(0., radius, distFromPos)), insideSphere); if(0 == 1) { color.a = insideSphereAlpha; } fragColor = color;}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;uniform mat4 uMVMatrix; uniform mat4 uPMatrix; uniform mat4 uTextureMatrix;out vec2 vTextureCoord; out vec3 vVertexPosition;void main() { gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); vTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy; }"
+      ],
+      "data": {
+        "depth": false,
+        "uniforms": {},
+        "isBackground": false
+      }
+    }
+  ],
+  "options": {
+    "name": "Bubble Refract (Remix)",
+    "fps": 60,
+    "dpi": 1.5,
+    "scale": 1,
+    "includeLogo": false,
+    "isProduction": false,
+    "freePlan": false
+  },
+  "version": "1.4.20",
+  "id": "30emZIa4VJrIZtLOf23Z"
+}

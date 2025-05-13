@@ -1,4 +1,4 @@
-import miniGL from "./miniGL.js";
+import miniGL from "./lib/miniGL.js";
 (async () => {
   const gl = new miniGL("glCanvas");
   console.log(gl);
