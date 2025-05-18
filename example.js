@@ -181,7 +181,7 @@ const colorNode = gl.shader(colorEffectShader, {
 // Connect nodes
 // gl.connect(noiseNode, colorNode, "uNoise");
 // gl.connect(flowmapNode, colorNode, "uFlowmap");
-gl.output(flowmapNode);
+// gl.output(flowmapNode);
 
 // Animation loop
 function lerp(a, b, t) {

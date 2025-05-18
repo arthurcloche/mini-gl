@@ -1,6 +1,8 @@
 import miniGL from "../lib/miniGL.js";
 import miniChunks from "../lib/miniChunks.js";
 
+import lenseDistortionNode from "../lib/miniNodes/effects/lenseDistortionNode.js";
+
 // Initialize miniGL
 const gl = new miniGL("canvas");
 gl.useChunks(miniChunks);
@@ -138,7 +140,7 @@ void main() {
   vec2 pos = vec2(0.5, 0.5) + (glMouse.xy - 0.5);
   pos.x *= aspectRatio;
   
-  float radius = 0.8980 * glResolution.x/max(glResolution.x, glResolution.y);
+  float radius = 1.99 * glResolution.x/max(glResolution.x, glResolution.y);
   
   // Use spherical transformation
   sphereCoords = sphericalTransformation(
@@ -192,12 +194,13 @@ const textCanvas = gl.canvas2D((ctx, w, h) => {
 //     uSampleBg: 0, // Enable sampling background
 //   },
 // });
-const sphereNode = gl.shader(sphereShader);
-
+const sphereNode = new lenseDistortionNode(gl, 10, 0.9, 0.9, true);
+gl.connect(textCanvas, sphereNode, "uTexture");
+// sphereNode.setInput(textCanvas);
 // Connect nodes
 // gl.connect(textCanvas, textNode, "glTexture");
 // gl.connect(backgroundNode, textNode, "glBgTexture");
-gl.connect(textCanvas, sphereNode, "glTexture");
+// gl.connect(textCanvas, sphereNode, "glTexture");
 
 // Final output is the sphere effect
 gl.output(sphereNode);
