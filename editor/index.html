@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MiniGL Node Editor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="editor-container">
+    <div class="node-editor">
+      <div class="toolbar">
+        <button id="add-noise-node">Add Noise Node</button>
+        <button id="add-color-node">Add Color Node</button>
+        <button id="add-output-node">Add Output Node</button>
+      </div>
+      <div id="node-canvas" class="node-canvas"></div>
+    </div>
+    <div class="preview-panel">
+      <canvas id="gl-canvas"></canvas>
+    </div>
+  </div>
+  <script type="module" src="editor.js"></script>
+</body>
+</html> 
