@@ -1,9 +1,9 @@
-import miniGL from "../lib/miniGL.js";
-import miniChunks from "../lib/miniChunks.js";
+import miniGL, { Node } from "../lib/miniGL/miniGL.js";
+import miniChunks from "../lib/miniGL/miniChunks.js";
 
-import lenseDistortionNode from "../lib/miniNodes/effects/lenseDistortionNode.js";
-import gaussianBlurNode from "../lib/miniNodes/effects/gaussianBlurNode.js";
-// Initialize miniGL
+import lenseDistortionNode from "../lib/miniGL/miniNodes/effects/lenseDistortionNode.js";
+import gaussianBlurNode from "../lib//miniGL/miniNodes/effects/gaussianBlurNode.js";
+
 const gl = new miniGL("canvas");
 gl.useChunks(miniChunks);
 
@@ -172,7 +172,6 @@ void main() {
   fragColor = color;
 }`;
 
-// Create a canvas for the text
 const textCanvas = gl.canvas2D((ctx, w, h) => {
   ctx.fillStyle = "rgba(0, 0, 0, 255)"; // Transparent background
   ctx.fillRect(0, 0, w, h);
@@ -184,27 +183,11 @@ const textCanvas = gl.canvas2D((ctx, w, h) => {
   ctx.textBaseline = "middle";
 
   // Draw text
-  ctx.fillText("NEGATIVE FRESNEL", w / 2, h / 2);
+  ctx.fillText("HELLO miniGL", w / 2, h / 2);
 });
-
-// Create nodes
-// const backgroundNode = gl.shader(gradientShader);
-// const textNode = gl.shader(textFragmentShader, {
-//   uniforms: {
-//     uSampleBg: 0, // Enable sampling background
-//   },
-// });
-const sphereNode = new lenseDistortionNode(gl, 10, 0.9, 0.9, true);
-const blurNode = gaussianBlurNode(gl, textCanvas, 8, 0);
+const sphereNode = lenseDistortionNode(gl, 1, 0.7, 10, 0.9, true, textCanvas);
+const blurNode = gaussianBlurNode(gl, textCanvas, 8);
 gl.connect(blurNode, sphereNode, "uTexture");
-// gl.connect(textCanvas, sphereNode, "uTexture");
-// sphereNode.setInput(textCanvas);
-// Connect nodes
-// gl.connect(textCanvas, textNode, "glTexture");
-// gl.connect(backgroundNode, textNode, "glBgTexture");
-// gl.connect(textCanvas, sphereNode, "glTexture");
-
-// Final output is the sphere effect
 gl.output(sphereNode);
 
 // Animation function
