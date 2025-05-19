@@ -2,7 +2,7 @@ import miniGL from "../lib/miniGL.js";
 import miniChunks from "../lib/miniChunks.js";
 
 import lenseDistortionNode from "../lib/miniNodes/effects/lenseDistortionNode.js";
-
+import gaussianBlurNode from "../lib/miniNodes/effects/gaussianBlurNode.js";
 // Initialize miniGL
 const gl = new miniGL("canvas");
 gl.useChunks(miniChunks);
@@ -195,7 +195,9 @@ const textCanvas = gl.canvas2D((ctx, w, h) => {
 //   },
 // });
 const sphereNode = new lenseDistortionNode(gl, 10, 0.9, 0.9, true);
-gl.connect(textCanvas, sphereNode, "uTexture");
+const blurNode = gaussianBlurNode(gl, textCanvas, 8, 0);
+gl.connect(blurNode, sphereNode, "uTexture");
+// gl.connect(textCanvas, sphereNode, "uTexture");
 // sphereNode.setInput(textCanvas);
 // Connect nodes
 // gl.connect(textCanvas, textNode, "glTexture");
