@@ -16,14 +16,15 @@ const textCanvas = gl.canvas2D((ctx, w, h) => {
   ctx.fillText("HELLO miniGL", w / 2, h / 2);
 });
 const sphereNode = lenseDistortionNode(gl, 1, 0.7, 10, 1.9, true, textCanvas);
-const blurNode = gaussianBlurNode(gl, textCanvas, 12);
+const blurNode = gaussianBlurNode(gl, textCanvas, 8);
+const ditherNode = bayerDitherNode(gl);
 gl.connect(blurNode, sphereNode, "uTexture");
-gl.output(sphereNode);
+gl.connect(sphereNode, ditherNode, "uTexture");
+gl.output(ditherNode);
 function animate() {
   gl.render();
   requestAnimationFrame(animate);
 }
-// const ditherNode = bayerDitherNode(gl);
 
 // gl.connect(sphereNode, ditherNode, "uTexture");
 
