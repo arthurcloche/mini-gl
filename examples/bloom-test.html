@@ -76,7 +76,7 @@
         
         <div class="control">
             <label for="blur">Blur Radius</label>
-            <input type="range" id="blur" min="0" max="3" step="0.1" value="1.5">
+            <input type="range" id="blur" min="0.1" max="32" step="0.1" value="1.5">
             <div class="value" id="blur-value">1.5</div>
         </div>
         
@@ -89,126 +89,133 @@
 
     <script type="module">
         import miniGL from '../lib/miniGL/miniGL.js';
-        import { BloomNode } from '../lib/miniGL/miniNodes/effects/bloomNode.js';
+        // No need to import BloomNode anymore - it's built into miniGL now
 
-        // Initialize miniGL
-        const gl = new miniGL('canvas');
-        
-        // TEST: Simple shader as backup
-        const testShader = gl.shader(`#version 300 es
-        precision highp float;
-        in vec2 glUV;
-        uniform float glTime;
-        out vec4 fragColor;
-        
-        void main() {
-            vec2 center = vec2(0.5);
-            float dist = distance(glUV, center);
-            float circle = 1.0 - smoothstep(0.2, 0.3, dist);
+        async function init() {
+            // Initialize miniGL (miniNodes are enabled by default)
+            const gl = new miniGL('canvas');
             
-            vec3 color = vec3(1.0, 0.5, 0.2) * circle;
-            color += 0.1; // Add some background
+            // Wait for miniNodes to be ready
+            await gl.ready();
             
-            fragColor = vec4(color, 1.0);
-        }`, { name: 'TestShader' });
+            // TEST: Simple shader as backup
+            const testShader = gl.shader(`#version 300 es
+            precision highp float;
+            in vec2 glUV;
+            uniform float glTime;
+            out vec4 fragColor;
+            
+            void main() {
+                vec2 center = vec2(0.5);
+                float dist = distance(glUV, center);
+                float circle = 1.0 - smoothstep(0.2, 0.3, dist);
+                
+                vec3 color = vec3(1.0, 0.5, 0.2) * circle;
+                color += 0.1; // Add some background
+                
+                fragColor = vec4(color, 1.0);
+            }`, { name: 'TestShader' });
 
-        // Create crystal texture
-        const crystalTexture = gl.image('https://cdn.shopify.com/s/files/1/0817/9308/9592/files/pexels-photo-507410.jpg?v=1721170628', {
-            name: 'CrystalTexture',
-        });
-
-        // Create text canvas texture (backup)
-        const textCanvas = gl.canvas2D((ctx, width, height) => {
-            // Black background
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, width, height);
-            
-
-            // White glowing text
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 80px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            // Main text
-            ctx.fillText('BLOOM', width/2, height/2 - 40);
-            
-            // Smaller subtitle
-            ctx.font = 'bold 40px Arial';
-            ctx.fillText('EFFECT TEST', width/2, height/2 + 40);
-            
-            // Some bright elements for bloom
-            ctx.fillStyle = '#ffff00';
-            ctx.fillRect(50, 50, 20, 20);
-            ctx.fillRect(width - 70, 50, 20, 20);
-            ctx.fillRect(50, height - 70, 20, 20);
-            ctx.fillRect(width - 70, height - 70, 20, 20);
-            
-        }, { name: 'TextCanvas' });
-
-        // TEST: Standalone luminance shader
-        const testLuminance = gl.shader(`#version 300 es
-        precision highp float;
-        in vec2 glUV;
-        uniform sampler2D uTexture;
-        out vec4 fragColor;
-        
-        void main() {
-            // Display the input texture
-            vec4 color = texture(uTexture, glUV);
-            fragColor = color;
-            
-            // DEBUGGING: Red was working
-            // fragColor = vec4(1.0, 0.0, 0.0, 1.0);
-        }`, { name: 'TestLuminance' });
-        
-        // testLuminance.connect('uTexture', textCanvas);
-
-        // TEST: Try different sources
-        // Uncomment one at a time:
-        
-        // Option 1: Simple shader (should show orange circle)
-        // gl.output(testShader);
-        
-        // Option 2: Canvas directly
-        // gl.output(textCanvas);
-        
-        // Option 3: Crystal texture directly
-        // gl.output(crystalTexture);
-
-        // Option 4: BloomNode with crystal texture
-        const bloom = new BloomNode(gl, 0.3, 0.2, 2.0, 1.5, 1.0, 'Bloom Effect');
-        gl.addNode(bloom);
-        bloom.connect('uTexture', crystalTexture);
-        gl.output(bloom);
-
-        // Set up controls
-        
-        function setupControl(id, uniform) {
-            const slider = document.getElementById(id);
-            const valueDisplay = document.getElementById(`${id}-value`);
-            
-            slider.addEventListener('input', (e) => {
-                const value = Math.max(0.00001, parseFloat(e.target.value));
-
-                valueDisplay.textContent = value.toFixed(2);
-                bloom.updateUniform(uniform, value);
+            // Create crystal texture
+            const crystalTexture = gl.image('https://cdn.shopify.com/s/files/1/0817/9308/9592/files/crystal_5d355be1-189a-475e-ac9e-e37290054e43.png?v=1748181175', {
+                name: 'CrystalTexture',
             });
+
+            // Create text canvas texture (backup)
+            const textCanvas = gl.canvas2D((ctx, width, height) => {
+                // Black background
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, width, height);
+                
+
+                // White glowing text
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 80px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Main text
+                ctx.fillText('BLOOM', width/2, height/2 - 40);
+                
+                // Smaller subtitle
+                ctx.font = 'bold 40px Arial';
+                ctx.fillText('EFFECT TEST', width/2, height/2 + 40);
+                
+                // Some bright elements for bloom
+                ctx.fillStyle = '#ffff00';
+                ctx.fillRect(50, 50, 20, 20);
+                ctx.fillRect(width - 70, 50, 20, 20);
+                ctx.fillRect(50, height - 70, 20, 20);
+                ctx.fillRect(width - 70, height - 70, 20, 20);
+                
+            }, { name: 'TextCanvas' });
+
+            // TEST: Standalone luminance shader
+            const testLuminance = gl.shader(`#version 300 es
+            precision highp float;
+            in vec2 glUV;
+            uniform sampler2D uTexture;
+            out vec4 fragColor;
+            
+            void main() {
+                // Display the input texture
+                vec4 color = texture(uTexture, glUV);
+                fragColor = color;
+                
+                // DEBUGGING: Red was working
+                // fragColor = vec4(1.0, 0.0, 0.0, 1.0);
+            }`, { name: 'TestLuminance' });
+            
+            //testLuminance.connect('uTexture', crystalTexture);
+
+            // TEST: Try different sources
+            // Uncomment one at a time:
+            
+            // Option 1: Simple shader (should show orange circle)
+            // gl.output(testShader);
+            
+            // Option 2: Canvas directly
+            // gl.output(textCanvas);
+            
+            // Option 3: Crystal texture directly
+            // gl.output(crystalTexture);
+
+            // Option 4: BloomNode with new API - much cleaner!
+            const bloom = gl.bloom(0.3, 0.2, 2.0, 1.5, 1.0, { name: 'Bloom Effect' });
+            bloom.connect('uTexture', crystalTexture);
+            gl.output(bloom);
+
+            // Set up controls
+            
+            function setupControl(id, uniform) {
+                const slider = document.getElementById(id);
+                const valueDisplay = document.getElementById(`${id}-value`);
+                
+                slider.addEventListener('input', (e) => {
+                    const value = Math.max(0.00001, parseFloat(e.target.value));
+
+                    valueDisplay.textContent = value.toFixed(2);
+                    bloom.updateUniform(uniform, value);
+                });
+            }
+
+            setupControl('threshold', 'uThreshold');
+            setupControl('knee', 'uKnee');
+            setupControl('intensity', 'uIntensity');
+            setupControl('blur', 'uBlurRadius');
+            setupControl('mix', 'uMix');
+
+            // Animation loop
+            function animate() {
+                gl.render();
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
         }
 
-        setupControl('threshold', 'uThreshold');
-        setupControl('knee', 'uKnee');
-        setupControl('intensity', 'uIntensity');
-        setupControl('blur', 'uBlurRadius');
-        setupControl('mix', 'uMix');
-
-        // Animation loop
-        function animate() {
-            gl.render();
-            requestAnimationFrame(animate);
-        }
-        
-        animate();
+        // Initialize everything
+        init().catch(console.error);
     </script>
 </body>
 </html> 
