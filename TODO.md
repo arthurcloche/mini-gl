@@ -1,6 +1,6 @@
 # TO DO
-[x] Create miniNode with retained textures and uniforms
-
+[ ] Create miniNode Class with retained textures and uniforms to fit within the pattern.
+[ ] Add onBeforeCompile hook
 [ ] Add 3D texture for gen envmap
 [x] Remove chunks dependencies 
 
