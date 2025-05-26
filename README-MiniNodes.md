@@ -1,6 +1,6 @@
 # MiniNodes - Custom Effect Nodes for miniGL
 
-MiniNodes are reusable effect components that extend miniGL's capabilities with common image processing and visual effects. They provide a clean, composable API for building complex shader pipelines.
+MiniNodes are reusable effect components that extend miniGL's capabilities with common image processing and visual effects. They are now fully integrated into the miniGL library and provide a clean, composable API for building complex shader pipelines.
 
 ## Quick Start
 
@@ -50,6 +50,57 @@ const bloom = gl.bloom(0.3, 0.2, 2.0, 1.5, 1.0);
 ```
 
 Core nodes (shader, image, etc.) are available immediately and don't require waiting.
+
+## Architecture Changes
+
+### Integrated MiniNode Base Class
+MiniNode is now part of the main miniGL library, not a separate import:
+
+```javascript
+// ❌ Old way
+import { MiniNode } from './lib/miniGL/miniNode.js';
+
+// ✅ New way
+import { MiniNode } from './lib/miniGL/miniGL.js';
+```
+
+### Self-Registering Nodes
+Each node type is in its own file and self-registers with miniGL:
+
+```javascript
+// Each node file exports both the class and a register function
+export class LuminanceNode extends MiniNode { ... }
+
+export function registerLuminanceNode(gl) {
+  if (!gl.ignoreMiniNodes && !gl.luminance) {
+    gl.luminance = (...args) => {
+      const node = new LuminanceNode(gl, ...args);
+      return gl.addNode(node);
+    };
+  }
+}
+```
+
+### Configuration Options
+
+**Disabling MiniNodes**
+```javascript
+// Initialize miniGL without miniNodes (core nodes only)
+const gl = new miniGL('canvas', { ignoreMiniNodes: true });
+```
+
+**Node Options**
+All nodes accept an options object:
+```javascript
+const bloom = gl.bloom(0.3, 0.2, 2.0, 1.5, 1.0, {
+  name: 'Custom Bloom',
+  width: 1024,
+  height: 1024,
+  filter: 'LINEAR',
+  wrap: 'CLAMP_TO_EDGE',
+  mipmap: true
+});
+```
 
 ## Available Nodes
 
@@ -150,7 +201,7 @@ bloom.updateUniform('uIntensity', 3.0);
 
 ### Simple Single-Shader Node
 ```javascript
-import { MiniNode } from './lib/miniGL/miniNode.js';
+import { MiniNode } from './lib/miniGL/miniGL.js';
 
 class InvertNode extends MiniNode {
   constructor(gl, strength = 1.0, options = {}) {
@@ -176,6 +227,16 @@ void main() {
 }`;
 
     this.inputRouting.set('uTexture', 'main');
+  }
+}
+
+// Register function
+export function registerInvertNode(gl) {
+  if (!gl.ignoreMiniNodes && !gl.invert) {
+    gl.invert = (...args) => {
+      const node = new InvertNode(gl, ...args);
+      return gl.addNode(node);
+    };
   }
 }
 
@@ -227,47 +288,28 @@ class CustomBloomNode extends MiniNode {
 }
 ```
 
-## Configuration Options
+## File Structure
 
-### Disabling MiniNodes
-```javascript
-// Initialize miniGL without miniNodes (core nodes only)
-const gl = new miniGL('canvas', { enableMiniNodes: false });
+```
+lib/miniGL/
+├── miniGL.js                    # Main library with MiniNode base class
+└── miniNodes/
+    └── effects/
+        ├── luminanceNode.js     # Luminance extraction
+        ├── grayscaleNode.js     # Grayscale conversion
+        ├── mixNode.js           # Texture mixing
+        ├── gaussianBlurNode.js  # Gaussian blur
+        ├── brightnessContrastNode.js # Brightness/contrast
+        ├── saturationNode.js    # Saturation adjustment
+        └── bloomNode.js         # Bloom effect
 ```
 
-### Node Options
-All nodes accept an options object:
-```javascript
-const bloom = gl.bloom(0.3, 0.2, 2.0, 1.5, 1.0, {
-  name: 'Custom Bloom',
-  width: 1024,
-  height: 1024,
-  filter: 'LINEAR',
-  wrap: 'CLAMP_TO_EDGE',
-  mipmap: true
-});
-```
-
-## Architecture Notes
-
-### MiniNode Base Class
-- Handles standard node interface (inputs, outputs, connect, disconnect)
-- Manages uniform routing to internal nodes
-- Supports both simple single-shader and complex multi-node patterns
-- Automatic initialization when added to miniGL
-
-### Integration with React Flow
-The node system is designed with future React Flow integration in mind:
-- Unique node IDs for graph representation
-- Clean input/output port definitions
-- Serializable node configurations
-- Modular composition patterns
-
-### Performance Considerations
+## Performance Considerations
 - Internal nodes are processed in dependency order
 - Uniform updates are efficiently propagated
 - Texture resources are properly managed
 - Supports WebGL2 float textures when available
+- Async loading only loads nodes when needed
 
 ## Examples
 
