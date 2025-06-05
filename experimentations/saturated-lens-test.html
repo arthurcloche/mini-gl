@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saturated Lens Test - Multi-Node ProxyNode</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      background: #111;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    #canvas {
+      width: 100vw;
+      height: 60vh;
+      max-width: 800px;
+      display: block;
+      margin: 0 auto;
+      background: #000;
+      border: 1px solid #333;
+    }
+
+    .controls {
+      max-width: 800px;
+      margin: 20px auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      padding: 20px;
+      background: #222;
+      border-radius: 10px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 12px;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #444;
+      outline: none;
+      appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .value {
+      font-size: 11px;
+      color: #666;
+      text-align: right;
+    }
+
+    .title {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 16px;
+      color: #fff;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+    }
+
+    .mouse-info {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      font-size: 11px;
+      color: #666;
+      background: rgba(0,0,0,0.8);
+      padding: 8px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  
+  <div class="controls">
+    <div class="title">Saturated Lens Effect - Multi-Node Test</div>
+    
+    <div class="control-group">
+      <label>Saturation</label>
+      <input type="range" id="saturation" min="0" max="2" step="0.01" value="1.5">
+      <div class="value" id="saturation-value">1.50</div>
+    </div>
+    
+    <div class="control-group">
+      <label>Lens Intensity</label>
+      <input type="range" id="intensity" min="0" max="2" step="0.01" value="1">
+      <div class="value" id="intensity-value">1.00</div>
+    </div>
+    
+    <div class="control-group">
+      <label>Lens Radius</label>
+      <input type="range" id="radius" min="0.1" max="2" step="0.01" value="1">
+      <div class="value" id="radius-value">1.00</div>
+    </div>
+    
+    <div class="control-group">
+      <label>Distortion</label>
+      <input type="range" id="distortion" min="1" max="20" step="0.1" value="10">
+      <div class="value" id="distortion-value">10.0</div>
+    </div>
+    
+    <div class="control-group">
+      <label>Dispersion</label>
+      <input type="range" id="dispersion" min="0" max="2" step="0.01" value="0.95">
+      <div class="value" id="dispersion-value">0.95</div>
+    </div>
+  </div>
+
+  <div class="mouse-info">
+    Move mouse over canvas to control lens position<br>
+    Multi-node chain: Saturation → Lens Distortion
+  </div>
+
+  <script type="module">
+    import miniGL from '../lib/miniGL/miniGL.js';
+    import { SaturatedLenseNode } from '../lib/miniGL/miniNodes/effects/saturatedLenseNode.js';
+
+    const canvas = document.getElementById('canvas');
+    canvas.width = 800;
+    canvas.height = 480;
+
+    const gl = new miniGL('canvas');
+
+    // Create a textured background using Canvas2D
+    const textureNode = gl.canvas2D((ctx, width, height) => {
+      // Create colorful gradient background
+      const gradient = ctx.createRadialGradient(
+        width/2, height/2, 0,
+        width/2, height/2, Math.min(width, height)/2
+      );
+      gradient.addColorStop(0, '#ff6b6b');
+      gradient.addColorStop(0.3, '#4ecdc4');
+      gradient.addColorStop(0.6, '#45b7d1');
+      gradient.addColorStop(1, '#96ceb4');
+      
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+      
+      // Add some geometric patterns
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 2;
+      
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const startX = width/2 + Math.cos(angle) * 50;
+        const startY = height/2 + Math.sin(angle) * 50;
+        const endX = width/2 + Math.cos(angle) * 200;
+        const endY = height/2 + Math.sin(angle) * 200;
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+      }
+      
+      // Add text
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Multi-Node Test', width/2, height/2 - 40);
+      
+      ctx.font = '16px Arial';
+      ctx.fillText('Saturation → Lens Distortion', width/2, height/2 + 40);
+    });
+
+    // Create the saturated lens effect (multi-node chain)
+    const saturatedLens = SaturatedLenseNode(gl, {
+      saturation: 1.5,
+      intensity: 1.0,
+      radius: 1.0,
+      distortion: 10.0,
+      dispersion: 0.95,
+      useMouse: true
+    });
+
+    // Connect texture to the saturated lens
+    saturatedLens.connect('glTexture', textureNode);
+
+    // Set as output
+    gl.output(saturatedLens);
+
+    // Animation loop
+    function animate() {
+      gl.render();
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Control handlers
+    function setupControls() {
+      const controls = [
+        { id: 'saturation', property: 'saturation' },
+        { id: 'intensity', property: 'intensity' },
+        { id: 'radius', property: 'radius' },
+        { id: 'distortion', property: 'distortion' },
+        { id: 'dispersion', property: 'dispersion' }
+      ];
+
+      controls.forEach(({ id, property }) => {
+        const slider = document.getElementById(id);
+        const valueDisplay = document.getElementById(`${id}-value`);
+        
+        slider.addEventListener('input', (e) => {
+          const value = parseFloat(e.target.value);
+          saturatedLens.updateUniform(property, value);
+          valueDisplay.textContent = value.toFixed(2);
+        });
+      });
+    }
+
+    setupControls();
+
+    console.log('Saturated Lens Test initialized');
+    console.log('Chain: Saturation node → Lens Distortion node');
+    console.log('ProxyNode manages both internal nodes as one unit');
+  </script>
+</body>
+</html> 

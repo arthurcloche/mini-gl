@@ -183,7 +183,7 @@
             // Option 4: BloomNode with new API - much cleaner!
             const bloom = gl.bloomNode(0.3, 0.2, 2.0, 1.5, 1.0, { name: 'Bloom Effect' });
             bloom.connect('uTexture', crystalTexture);
-            // const lense = gl.lenseDistortion()
+            const lense = gl.lenseDistortion()
             
             gl.output(bloom);
 
