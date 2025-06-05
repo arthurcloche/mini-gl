@@ -36,3 +36,9 @@ Stable fuild : https://mofu-dev.com/en/blog/stable-fluids/
 Fast fluids 3 : https://github.com/amsXYZ/three-fluid-sim
 
 paper shaders : https://github.com/paper-design/shaders
+
+Inspo : 
+https://github.com/regl-project/regl
+https://stack.gl/
+https://nodes.io/
+https://regl-project.github.io/regl/www/gallery.html
