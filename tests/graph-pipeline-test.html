@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>miniGL Graph Pipeline Test Suite</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      background: #111;
+      color: #fff;
+      line-height: 1.4;
+    }
+
+    .test-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .test-section {
+      margin-bottom: 40px;
+      padding: 20px;
+      background: #222;
+      border-radius: 10px;
+      border-left: 4px solid #4CAF50;
+    }
+
+    .test-section.failed {
+      border-left-color: #f44336;
+    }
+
+    .test-section.running {
+      border-left-color: #ff9800;
+    }
+
+    h1 {
+      text-align: center;
+      color: #4CAF50;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      color: #fff;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .test-result {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .test-result.pass {
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid #4CAF50;
+      color: #4CAF50;
+    }
+
+    .test-result.fail {
+      background: rgba(244, 67, 54, 0.2);
+      border: 1px solid #f44336;
+      color: #f44336;
+    }
+
+    .test-result.info {
+      background: rgba(33, 150, 243, 0.2);
+      border: 1px solid #2196F3;
+      color: #2196F3;
+    }
+
+    .canvas-container {
+      display: flex;
+      gap: 20px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    canvas {
+      border: 1px solid #333;
+      background: #000;
+    }
+
+    .stats {
+      background: #333;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+
+    .graph-viz {
+      background: #1a1a1a;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 10px 0;
+      font-family: monospace;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    .node {
+      color: #4CAF50;
+    }
+
+    .connection {
+      color: #2196F3;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>miniGL Graph Pipeline Test Suite</h1>
+    
+    <div class="test-section" id="basic-graph-test">
+      <h2>Test 1: Basic Graph Structure</h2>
+      <div id="basic-results"></div>
+    </div>
+
+    <div class="test-section" id="topo-sort-test">
+      <h2>Test 2: Topological Sorting</h2>
+      <div id="topo-results"></div>
+    </div>
+
+    <div class="test-section" id="multi-node-test">
+      <h2>Test 3: Multi-Node Pipeline</h2>
+      <div id="multi-results"></div>
+      <div class="canvas-container">
+        <canvas id="multi-canvas" width="400" height="300"></canvas>
+      </div>
+    </div>
+
+    <div class="test-section" id="mininode-test">
+      <h2>Test 4: MiniNode Complex Graph</h2>
+      <div id="mininode-results"></div>
+      <div class="canvas-container">
+        <canvas id="mininode-canvas" width="400" height="300"></canvas>
+      </div>
+    </div>
+
+    <div class="test-section" id="performance-test">
+      <h2>Test 5: Performance and Memory</h2>
+      <div id="performance-results"></div>
+    </div>
+
+    <div class="stats" id="test-stats">
+      <strong>Test Statistics:</strong>
+      <div id="stats-content"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import miniGL, { MiniNode } from '../lib/miniGL/miniGL.js';
+    import { SaturatedLenseNode } from '../lib/miniGL/miniNodes/effects/saturatedLenseNode.js';
+
+    // Test utilities
+    class TestRunner {
+      constructor() {
+        this.results = [];
+        this.currentSection = null;
+      }
+
+      section(name, id) {
+        this.currentSection = { name, id, tests: [] };
+        this.results.push(this.currentSection);
+        return this;
+      }
+
+      test(name, fn) {
+        const container = document.getElementById(`${this.currentSection.id}-results`);
+        const startTime = performance.now();
+        
+        try {
+          const result = fn();
+          const endTime = performance.now();
+          const duration = (endTime - startTime).toFixed(2);
+          
+          if (result === true || (result && result.success)) {
+            this.pass(container, name, duration, result.details);
+            this.currentSection.tests.push({ name, status: 'pass', duration });
+          } else {
+            this.fail(container, name, duration, result.error || 'Test returned false');
+            this.currentSection.tests.push({ name, status: 'fail', duration });
+          }
+        } catch (error) {
+          const endTime = performance.now();
+          const duration = (endTime - startTime).toFixed(2);
+          this.fail(container, name, duration, error.message);
+          this.currentSection.tests.push({ name, status: 'fail', duration, error: error.message });
+        }
+        
+        return this;
+      }
+
+      async asyncTest(name, fn) {
+        const container = document.getElementById(`${this.currentSection.id}-results`);
+        const startTime = performance.now();
+        
+        try {
+          const result = await fn();
+          const endTime = performance.now();
+          const duration = (endTime - startTime).toFixed(2);
+          
+          if (result === true || (result && result.success)) {
+            this.pass(container, name, duration, result.details);
+            this.currentSection.tests.push({ name, status: 'pass', duration });
+          } else {
+            this.fail(container, name, duration, result.error || 'Test returned false');
+            this.currentSection.tests.push({ name, status: 'fail', duration });
+          }
+        } catch (error) {
+          const endTime = performance.now();
+          const duration = (endTime - startTime).toFixed(2);
+          this.fail(container, name, duration, error.message);
+          this.currentSection.tests.push({ name, status: 'fail', duration, error: error.message });
+        }
+        
+        return this;
+      }
+
+      pass(container, name, duration, details) {
+        const div = document.createElement('div');
+        div.className = 'test-result pass';
+        div.innerHTML = `✓ ${name} <span style="float: right;">${duration}ms</span>`;
+        if (details) {
+          div.innerHTML += `<br><small>${details}</small>`;
+        }
+        container.appendChild(div);
+      }
+
+      fail(container, name, duration, error) {
+        const div = document.createElement('div');
+        div.className = 'test-result fail';
+        div.innerHTML = `✗ ${name} <span style="float: right;">${duration}ms</span>`;
+        if (error) {
+          div.innerHTML += `<br><small>Error: ${error}</small>`;
+        }
+        container.appendChild(div);
+      }
+
+      info(container, message) {
+        const div = document.createElement('div');
+        div.className = 'test-result info';
+        div.innerHTML = `ℹ ${message}`;
+        container.appendChild(div);
+      }
+
+      finalize() {
+        this.updateStats();
+      }
+
+      updateStats() {
+        const totalTests = this.results.reduce((sum, section) => sum + section.tests.length, 0);
+        const passedTests = this.results.reduce((sum, section) => 
+          sum + section.tests.filter(t => t.status === 'pass').length, 0);
+        const failedTests = totalTests - passedTests;
+        
+        const statsContent = document.getElementById('stats-content');
+        statsContent.innerHTML = `
+          Total Tests: ${totalTests} | 
+          Passed: <span style="color: #4CAF50;">${passedTests}</span> | 
+          Failed: <span style="color: #f44336;">${failedTests}</span> | 
+          Success Rate: ${((passedTests / totalTests) * 100).toFixed(1)}%
+        `;
+
+        // Update section styling
+        this.results.forEach(section => {
+          const sectionEl = document.getElementById(section.id);
+          const hasFailed = section.tests.some(t => t.status === 'fail');
+          if (hasFailed) {
+            sectionEl.className = 'test-section failed';
+          }
+        });
+      }
+    }
+
+    const runner = new TestRunner();
+
+    // Test 1: Basic Graph Structure
+    runner.section('Basic Graph Structure', 'basic-graph-test')
+      .test('Create WebGL context', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        return gl && gl.gl && { success: true, details: 'WebGL2 context created successfully' };
+      })
+      .test('Create basic shader nodes', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        const redShader = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0, 0.0, 0.0, 1.0); }
+        `);
+        
+        const blueShader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { 
+            vec4 red = texture(glTexture, glUV);
+            fragColor = vec4(0.0, 0.0, 1.0, 1.0) * red.r; 
+          }
+        `);
+        
+        blueShader.connect('glTexture', redShader);
+        
+        return redShader && blueShader && blueShader.inputs.has('glTexture') && {
+          success: true,
+          details: `Created chain: red → blue, inputs: ${blueShader.inputs.size}`
+        };
+      })
+      .test('Node registration in miniGL', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        const nodeCount = gl.nodes.size;
+        const shader = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0); }
+        `);
+        
+        return gl.nodes.size === nodeCount + 1 && gl.nodes.has(shader.id) && {
+          success: true,
+          details: `Node registered with ID: ${shader.id}`
+        };
+      });
+
+    // Test 2: Topological Sorting  
+    runner.section('Topological Sorting', 'topo-sort-test')
+      .test('Linear chain topology', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        // Create A → B → C → D chain
+        const shaderA = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0, 0.0, 0.0, 1.0); }
+        `, {}, { name: 'A' });
+        
+        const shaderB = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = texture(glTexture, glUV) * 0.8; }
+        `, {}, { name: 'B' });
+        
+        const shaderC = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = texture(glTexture, glUV) * 0.6; }
+        `, {}, { name: 'C' });
+        
+        const shaderD = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = texture(glTexture, glUV) * 0.4; }
+        `, {}, { name: 'D' });
+        
+        shaderB.connect('glTexture', shaderA);
+        shaderC.connect('glTexture', shaderB);
+        shaderD.connect('glTexture', shaderC);
+        
+        const order = gl._topoSort(shaderD);
+        const names = order.map(n => n.name);
+        
+        return JSON.stringify(names) === JSON.stringify(['A', 'B', 'C', 'D']) && {
+          success: true,
+          details: `Topological order: ${names.join(' → ')}`
+        };
+      })
+      .test('Diamond graph topology', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        // Create diamond: A → B,C → D
+        const shaderA = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0, 0.0, 0.0, 1.0); }
+        `, {}, { name: 'A' });
+        
+        const shaderB = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = texture(glTexture, glUV) * vec4(0.0, 1.0, 0.0, 1.0); }
+        `, {}, { name: 'B' });
+        
+        const shaderC = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = texture(glTexture, glUV) * vec4(0.0, 0.0, 1.0, 1.0); }
+        `, {}, { name: 'C' });
+        
+        const shaderD = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTextureB;
+          uniform sampler2D glTextureC;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { 
+            vec4 b = texture(glTextureB, glUV);
+            vec4 c = texture(glTextureC, glUV);
+            fragColor = mix(b, c, 0.5); 
+          }
+        `, {}, { name: 'D' });
+        
+        shaderB.connect('glTexture', shaderA);
+        shaderC.connect('glTexture', shaderA);
+        shaderD.connect('glTextureB', shaderB);
+        shaderD.connect('glTextureC', shaderC);
+        
+        const order = gl._topoSort(shaderD);
+        const names = order.map(n => n.name);
+        
+        // A should come first, D should come last, B and C can be in either order
+        const validOrder = names[0] === 'A' && names[3] === 'D' && 
+                          names.includes('B') && names.includes('C');
+        
+        return validOrder && {
+          success: true,
+          details: `Diamond topology: ${names.join(' → ')} (A first, D last)`
+        };
+      })
+      .test('Graph dirty state management', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        const shaderA = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0); }
+        `, {}, { name: 'A' });
+        
+        // Should be dirty initially
+        const dirty1 = gl._graphDirty;
+        
+        // Accessing topo sort should clear dirty flag
+        gl._topoSort(shaderA);
+        const dirty2 = gl._graphDirty;
+        
+        // Adding new connection should set dirty flag
+        const shaderB = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = texture(glTexture, glUV); }
+        `, {}, { name: 'B' });
+        
+        shaderB.connect('glTexture', shaderA);
+        const dirty3 = gl._graphDirty;
+        
+        return dirty1 && !dirty2 && dirty3 && {
+          success: true,
+          details: `Dirty states: initial=${dirty1}, after_topo=${dirty2}, after_connect=${dirty3}`
+        };
+      });
+
+    // Test 3: Multi-Node Pipeline
+    runner.section('Multi-Node Pipeline', 'multi-node-test')
+      .asyncTest('Render linear pipeline', async () => {
+        const canvas = document.getElementById('multi-canvas');
+        const gl = new miniGL('multi-canvas');
+        
+        // Create a simple 3-node pipeline
+        const source = gl.canvas2D((ctx, width, height) => {
+          ctx.fillStyle = '#ff6b6b';
+          ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = '#fff';
+          ctx.font = '24px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('SOURCE', width/2, height/2);
+        });
+        
+        const filter1 = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 color = texture(glTexture, glUV);
+            // Desaturate
+            float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+            fragColor = vec4(mix(color.rgb, vec3(gray), 0.5), color.a);
+          }
+        `);
+        
+        const filter2 = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 color = texture(glTexture, glUV);
+            // Invert colors
+            fragColor = vec4(1.0 - color.rgb, color.a);
+          }
+        `);
+        
+        filter1.connect('glTexture', source);
+        filter2.connect('glTexture', filter1);
+        gl.output(filter2);
+        
+        // Render a few frames
+        for (let i = 0; i < 5; i++) {
+          gl.render();
+          await new Promise(resolve => setTimeout(resolve, 16));
+        }
+        
+        return {
+          success: true,
+          details: 'Linear pipeline: Canvas2D → Desaturate → Invert → Screen'
+        };
+      })
+      .asyncTest('Render parallel processing', async () => {
+        const canvas = document.getElementById('multi-canvas');
+        const gl = new miniGL('multi-canvas');
+        
+        // Create source texture
+        const source = gl.canvas2D((ctx, width, height) => {
+          const gradient = ctx.createLinearGradient(0, 0, width, height);
+          gradient.addColorStop(0, '#ff6b6b');
+          gradient.addColorStop(0.5, '#4ecdc4');
+          gradient.addColorStop(1, '#45b7d1');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, width, height);
+        });
+        
+        // Two parallel processing branches
+        const branch1 = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 color = texture(glTexture, glUV);
+            fragColor = vec4(color.r, 0.0, 0.0, color.a); // Red channel only
+          }
+        `);
+        
+        const branch2 = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 color = texture(glTexture, glUV);
+            fragColor = vec4(0.0, 0.0, color.b, color.a); // Blue channel only
+          }
+        `);
+        
+        // Combine branches
+        const combiner = gl.blend();
+        
+        branch1.connect('glTexture', source);
+        branch2.connect('glTexture', source);
+        combiner.connect('glBase', branch1);
+        combiner.connect('glBlend', branch2);
+        
+        gl.output(combiner);
+        
+        // Render frames
+        for (let i = 0; i < 5; i++) {
+          gl.render();
+          await new Promise(resolve => setTimeout(resolve, 16));
+        }
+        
+        return {
+          success: true,
+          details: 'Parallel pipeline: Source → (Red + Blue) → Blend → Screen'
+        };
+      });
+
+    // Test 4: MiniNode Complex Graph
+    runner.section('MiniNode Complex Graph', 'mininode-test')
+      .asyncTest('SaturatedLense multi-node', async () => {
+        const canvas = document.getElementById('mininode-canvas');
+        const gl = new miniGL('mininode-canvas');
+        
+        // Create textured source
+        const source = gl.canvas2D((ctx, width, height) => {
+          // Checkerboard pattern
+          const size = 40;
+          for (let x = 0; x < width; x += size) {
+            for (let y = 0; y < height; y += size) {
+              const isEven = ((x / size) + (y / size)) % 2 === 0;
+              ctx.fillStyle = isEven ? '#ff6b6b' : '#4ecdc4';
+              ctx.fillRect(x, y, size, size);
+            }
+          }
+          
+          ctx.fillStyle = '#fff';
+          ctx.font = '20px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('MININODE TEST', width/2, height/2);
+        });
+        
+        // Create SaturatedLense (multi-node effect)
+        const saturatedLens = SaturatedLenseNode(gl, {
+          saturation: 2.0,
+          intensity: 0.8,
+          radius: 0.5,
+          distortion: 8.0,
+          dispersion: 1.2,
+          position: [0.3, 0.3]
+        });
+        
+        saturatedLens.connect('glTexture', source);
+        gl.output(saturatedLens);
+        
+        // Test MiniNode API
+        const hasCorrectInputs = saturatedLens.inputs.has('glTexture');
+        const hasInternalNodes = saturatedLens.internalNodes.length === 2;
+        const canUpdateUniforms = (() => {
+          saturatedLens.updateUniform('saturation', 1.5);
+          return true;
+        })();
+        
+        // Render frames
+        for (let i = 0; i < 5; i++) {
+          gl.render();
+          await new Promise(resolve => setTimeout(resolve, 16));
+        }
+        
+        return hasCorrectInputs && hasInternalNodes && canUpdateUniforms && {
+          success: true,
+          details: `MiniNode with ${saturatedLens.internalNodes.length} internal nodes, API working`
+        };
+      })
+      .test('MiniNode input/uniform routing', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        // Create simple two-node chain manually
+        const nodeA = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float uValue;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(uValue, 0.0, 0.0, 1.0); }
+        `, { uValue: 1.0 });
+        
+        const nodeB = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          uniform float uMultiplier;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { 
+            vec4 color = texture(glTexture, glUV);
+            fragColor = color * uMultiplier; 
+          }
+        `, { uMultiplier: 0.5 });
+        
+        nodeB.connect('glTexture', nodeA);
+        
+        // Create MiniNode wrapper
+        const mini = new MiniNode(gl, nodeB, {
+          name: 'Test Mini',
+          internalNodes: [nodeA, nodeB]
+        });
+        
+        // Set up routing
+        mini.input('input', nodeA, 'glTexture')
+             .uniform('value', nodeA, 'uValue')
+             .uniform('multiplier', nodeB, 'uMultiplier');
+        
+        // Test routing
+        const hasRouting = mini.inputRouting.has('input') && 
+                          mini.uniformMappings.has('value') && 
+                          mini.uniformMappings.has('multiplier');
+        
+        return hasRouting && {
+          success: true,
+          details: 'Input and uniform routing configured correctly'
+        };
+      })
+      .test('MiniNode helper methods', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        const node = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0); }
+        `);
+        
+        const mini = new MiniNode(gl, node);
+        
+        // Add helper method
+        mini.helper('setValue', function(value) {
+          this.testValue = value;
+          return this;
+        });
+        
+        // Test chaining
+        const result = mini.setValue(42);
+        
+        return result === mini && mini.testValue === 42 && typeof mini.setValue === 'function' && {
+          success: true,
+          details: 'Helper method added and chainable'
+        };
+      });
+
+    // Test 5: Performance and Memory
+    runner.section('Performance and Memory', 'performance-test')
+      .test('Large graph performance', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        const startTime = performance.now();
+        
+        // Create 50 nodes in a chain
+        let prevNode = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0, 0.0, 0.0, 1.0); }
+        `);
+        
+        for (let i = 1; i < 50; i++) {
+          const node = gl.shader(`#version 300 es
+            precision highp float;
+            uniform sampler2D glTexture;
+            in vec2 glUV;
+            out vec4 fragColor;
+            void main() { fragColor = texture(glTexture, glUV) * 0.99; }
+          `);
+          node.connect('glTexture', prevNode);
+          prevNode = node;
+        }
+        
+        // Test topological sort performance
+        const topoStartTime = performance.now();
+        const order = gl._topoSort(prevNode);
+        const topoEndTime = performance.now();
+        
+        const totalTime = performance.now() - startTime;
+        const topoTime = topoEndTime - topoStartTime;
+        
+        return order.length === 50 && totalTime < 100 && topoTime < 10 && {
+          success: true,
+          details: `50 nodes: total=${totalTime.toFixed(2)}ms, topo=${topoTime.toFixed(2)}ms`
+        };
+      })
+      .test('Memory cleanup', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        const initialNodeCount = gl.nodes.size;
+        
+        // Create nodes
+        const nodes = [];
+        for (let i = 0; i < 10; i++) {
+          const node = gl.shader(`#version 300 es
+            precision highp float;
+            out vec4 fragColor;
+            void main() { fragColor = vec4(1.0); }
+          `);
+          nodes.push(node);
+        }
+        
+        const afterCreateCount = gl.nodes.size;
+        
+        // Dispose nodes
+        nodes.forEach(node => node.dispose());
+        
+        const afterDisposeCount = gl.nodes.size;
+        
+        return afterCreateCount === initialNodeCount + 10 && 
+               afterDisposeCount === initialNodeCount && {
+          success: true,
+          details: `Nodes: initial=${initialNodeCount}, created=${afterCreateCount}, disposed=${afterDisposeCount}`
+        };
+      })
+      .test('Frame caching efficiency', () => {
+        const canvas = document.createElement('canvas');
+        const gl = new miniGL(canvas.id = 'test-canvas-' + Date.now());
+        document.body.appendChild(canvas);
+        
+        let processCallCount = 0;
+        
+        // Mock a node that counts process calls
+        const node = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0); }
+        `);
+        
+        const originalProcess = node.process;
+        node.process = function(time) {
+          processCallCount++;
+          return originalProcess.call(this, time);
+        };
+        
+        // Create a diamond graph where the node should only be processed once per frame
+        const nodeB = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = texture(glTexture, glUV); }
+        `);
+        
+        const nodeC = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = texture(glTexture, glUV); }
+        `);
+        
+        const nodeD = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTextureB;
+          uniform sampler2D glTextureC;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = mix(texture(glTextureB, glUV), texture(glTextureC, glUV), 0.5); }
+        `);
+        
+        nodeB.connect('glTexture', node);
+        nodeC.connect('glTexture', node);
+        nodeD.connect('glTextureB', nodeB);
+        nodeD.connect('glTextureC', nodeC);
+        
+        gl.output(nodeD);
+        
+        // Render one frame - node should be processed only once despite being used by B and C
+        gl.render();
+        
+        return processCallCount === 1 && {
+          success: true,
+          details: `Diamond graph: shared node processed ${processCallCount} time(s) per frame`
+        };
+      });
+
+    // Run all tests
+    Promise.resolve().then(() => {
+      runner.finalize();
+      
+      // Add graph visualization for the last test
+      const container = document.getElementById('mininode-results');
+      const viz = document.createElement('div');
+      viz.className = 'graph-viz';
+      viz.innerHTML = `
+        <strong>SaturatedLense Internal Graph:</strong>
+        <pre>
+<span class="node">CanvasTexture</span>
+    ↓ <span class="connection">glTexture</span>
+<span class="node">SaturationNode</span> ← <span class="connection">uSaturation</span> (controlled via MiniNode)
+    ↓ <span class="connection">glTexture</span>
+<span class="node">LensDistortionNode</span> ← <span class="connection">intensity, radius, distortion, dispersion</span> (controlled via MiniNode)
+    ↓ <span class="connection">output</span>
+<span class="node">Screen</span>
+
+<strong>MiniNode Routing:</strong>
+• External "saturation" → SaturationNode.uSaturation
+• External "intensity" → LensDistortionNode.intensity
+• External "glTexture" → SaturationNode.glTexture
+        </pre>
+      `;
+      container.appendChild(viz);
+    });
+  </script>
+</body>
+</html> 
