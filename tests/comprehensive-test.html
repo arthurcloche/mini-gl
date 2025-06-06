@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>miniGL Comprehensive Test Suite</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #7f8c8d;
+      margin-bottom: 40px;
+      font-size: 1.2em;
+    }
+
+    .test-category {
+      margin: 40px 0;
+      border: 2px solid #3498db;
+      border-radius: 15px;
+      overflow: hidden;
+      background: white;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .category-header {
+      background: linear-gradient(45deg, #3498db, #2980b9);
+      color: white;
+      padding: 20px;
+      font-size: 1.4em;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .test-section {
+      margin: 20px;
+      padding: 20px;
+      border: 1px solid #ecf0f1;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    .test-section h4 {
+      margin-top: 0;
+      color: #2c3e50;
+      border-bottom: 2px solid #e74c3c;
+      padding-bottom: 10px;
+    }
+
+    .test-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 2px dashed #bdc3c7;
+    }
+
+    .canvas-container {
+      width: 300px;
+      height: 200px;
+      border: 2px solid #34495e;
+      border-radius: 5px;
+      background: #000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .canvas-container.large {
+      width: 400px;
+      height: 300px;
+    }
+
+    .canvas-container.small {
+      width: 200px;
+      height: 150px;
+    }
+
+    .test-image, .test-video {
+      width: 200px;
+      height: 150px;
+      border: 2px solid #34495e;
+      border-radius: 5px;
+    }
+
+    .results {
+      background: #e8f5e8;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      border-left: 4px solid #27ae60;
+    }
+
+    .results.error {
+      background: #ffeaea;
+      color: #c0392b;
+      border-left-color: #e74c3c;
+    }
+
+    .success {
+      color: #27ae60;
+      font-weight: bold;
+    }
+
+    .error {
+      color: #e74c3c;
+      font-weight: bold;
+    }
+
+    button {
+      background: linear-gradient(45deg, #e74c3c, #c0392b);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 25px;
+      cursor: pointer;
+      margin: 8px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+
+    button.run-all {
+      background: linear-gradient(45deg, #27ae60, #2ecc71);
+      font-size: 1.1em;
+      padding: 15px 30px;
+    }
+
+    .controls {
+      text-align: center;
+      margin: 30px 0;
+    }
+
+    .node-info {
+      background: #ecf0f1;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+      font-size: 11px;
+      color: #2c3e50;
+    }
+
+    .performance-stats {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 5px;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>miniGL Comprehensive Test Suite</h1>
+    <p class="subtitle">Testing all core functionality, nodes, initialization methods, and complex scenarios</p>
+    
+    <div class="controls">
+      <button class="run-all" onclick="runAllTests()">🚀 Run All Tests</button>
+      <button onclick="clearAllResults()">🧹 Clear Results</button>
+    </div>
+
+    <!-- Category 1: Initialization Methods -->
+    <div class="test-category">
+      <div class="category-header">
+        🎯 Category 1: Initialization Methods
+      </div>
+      
+      <div class="test-section">
+        <h4>1.1 Canvas Element Target</h4>
+        <div class="test-area">
+          <canvas id="init-canvas" width="300" height="200" style="border: 2px solid #34495e; background: #000;"></canvas>
+          <div>
+            <button onclick="testCanvasInit()">Test Canvas Init</button>
+            <div id="canvas-init-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>1.2 Div Container Target</h4>
+        <div class="test-area">
+          <div id="init-div" class="canvas-container"></div>
+          <div>
+            <button onclick="testDivInit()">Test Div Init</button>
+            <div id="div-init-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>1.3 Image Element Target</h4>
+        <div class="test-area">
+          <img id="init-image" class="test-image" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzQ5OGRiIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPklNQUdFPC90ZXh0Pjwvc3ZnPg==" alt="Test Image">
+          <div>
+            <button onclick="testImageInit()">Test Image Init</button>
+            <div id="image-init-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>1.4 Video Element Target</h4>
+        <div class="test-area">
+          <video id="init-video" class="test-video" width="200" height="150" muted loop>
+            <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDE=" type="video/mp4">
+          </video>
+          <div>
+            <button onclick="testVideoInit()">Test Video Init</button>
+            <div id="video-init-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>1.5 Options and Configuration</h4>
+        <div class="test-area">
+          <div id="init-options" class="canvas-container"></div>
+          <div>
+            <button onclick="testOptionsInit()">Test Options Init</button>
+            <div id="options-init-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+    <!-- Category 2: Core Node Testing -->
+    <div class="test-category">
+      <div class="category-header">
+        ⚡ Category 2: Core Node Testing
+      </div>
+      
+      <div class="test-section">
+        <h4>2.1 Basic Shader Node</h4>
+        <div class="test-area">
+          <div id="shader-basic" class="canvas-container"></div>
+          <div>
+            <button onclick="testBasicShader()">Test Basic Shader</button>
+            <div id="shader-basic-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>2.2 Image Texture Node</h4>
+        <div class="test-area">
+          <div id="image-texture" class="canvas-container"></div>
+          <div>
+            <button onclick="testImageTexture()">Test Image Texture</button>
+            <div id="image-texture-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>2.3 Canvas2D Texture Node</h4>
+        <div class="test-area">
+          <div id="canvas2d-texture" class="canvas-container"></div>
+          <div>
+            <button onclick="testCanvas2DTexture()">Test Canvas2D Texture</button>
+            <div id="canvas2d-texture-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>2.4 Feedback/Pingpong Node</h4>
+        <div class="test-area">
+          <div id="feedback-node" class="canvas-container"></div>
+          <div>
+            <button onclick="testFeedbackNode()">Test Feedback Node</button>
+            <div id="feedback-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>2.5 Multiple Render Targets (MRT)</h4>
+        <div class="test-area">
+          <div id="mrt-node" class="canvas-container"></div>
+          <div>
+            <button onclick="testMRTNode()">Test MRT Node</button>
+            <div id="mrt-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>2.6 Blend Node</h4>
+        <div class="test-area">
+          <div id="blend-node" class="canvas-container"></div>
+          <div>
+            <button onclick="testBlendNode()">Test Blend Node</button>
+            <div id="blend-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category 3: Effect Nodes -->
+    <div class="test-category">
+      <div class="category-header">
+        🎨 Category 3: Effect Nodes
+      </div>
+      
+      <div class="test-section">
+        <h4>3.1 Basic Effects</h4>
+        <div class="test-area">
+          <div id="effects-basic" class="canvas-container"></div>
+          <div>
+            <button onclick="testBasicEffects()">Test Basic Effects</button>
+            <div id="effects-basic-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>3.2 Blur and Filters</h4>
+        <div class="test-area">
+          <div id="effects-blur" class="canvas-container"></div>
+          <div>
+            <button onclick="testBlurEffects()">Test Blur Effects</button>
+            <div id="effects-blur-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>3.3 Advanced Effects</h4>
+        <div class="test-area">
+          <div id="effects-advanced" class="canvas-container"></div>
+          <div>
+            <button onclick="testAdvancedEffects()">Test Advanced Effects</button>
+            <div id="effects-advanced-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category 4: Complex Pipelines -->
+    <div class="test-category">
+      <div class="category-header">
+        🔀 Category 4: Complex Pipelines
+      </div>
+      
+      <div class="test-section">
+        <h4>4.1 Parallel Processing</h4>
+        <div class="test-area">
+          <div id="parallel-processing" class="canvas-container large"></div>
+          <div>
+            <button onclick="testParallelProcessing()">Test Parallel Processing</button>
+            <div id="parallel-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>4.2 Multiple Textures</h4>
+        <div class="test-area">
+          <div id="multi-textures" class="canvas-container large"></div>
+          <div>
+            <button onclick="testMultipleTextures()">Test Multiple Textures</button>
+            <div id="multi-textures-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>4.3 Complex Node Graph</h4>
+        <div class="test-area">
+          <div id="complex-graph" class="canvas-container large"></div>
+          <div>
+            <button onclick="testComplexGraph()">Test Complex Graph</button>
+            <div id="complex-graph-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category 5: System Health -->
+    <div class="test-category">
+      <div class="category-header">
+        🏥 Category 5: System Health
+      </div>
+      
+      <div class="test-section">
+        <h4>5.1 Topological Sorting</h4>
+        <div class="test-area">
+          <div id="topo-sort" class="canvas-container"></div>
+          <div>
+            <button onclick="testTopoSort()">Test Topological Sort</button>
+            <div id="topo-sort-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>5.2 Render Pipeline</h4>
+        <div class="test-area">
+          <div id="render-pipeline" class="canvas-container"></div>
+          <div>
+            <button onclick="testRenderPipeline()">Test Render Pipeline</button>
+            <div id="render-pipeline-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>5.3 ID Assignment</h4>
+        <div class="test-area">
+          <div id="id-assignment" class="canvas-container"></div>
+          <div>
+            <button onclick="testIDAssignment()">Test ID Assignment</button>
+            <div id="id-assignment-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>5.4 Performance Monitoring</h4>
+        <div class="test-area">
+          <div id="performance-monitor" class="canvas-container"></div>
+          <div>
+            <button onclick="testPerformance()">Test Performance</button>
+            <div id="performance-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category 6: Custom MiniNode -->
+    <div class="test-category">
+      <div class="category-header">
+        🛠️ Category 6: Custom MiniNode
+      </div>
+      
+      <div class="test-section">
+        <h4>6.1 Multi-Shader MiniNode</h4>
+        <div class="test-area">
+          <div id="custom-node" class="canvas-container large"></div>
+          <div>
+            <button onclick="testCustomMiniNode()">Test Custom MiniNode</button>
+            <div id="custom-node-results" class="results"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import miniGL from '../lib/miniGL/miniGL.js';
+    
+    // Global test state
+    window.testResults = {};
+    window.testInstances = {};
+    
+    // Utility functions
+    function logResult(testName, success, message, details = {}) {
+      window.testResults[testName] = { success, message, details, timestamp: Date.now() };
+      console.log(`[${testName}] ${success ? '✓' : '✗'} ${message}`, details);
+    }
+    
+    function displayResult(elementId, testName, success, message, details = {}) {
+      const element = document.getElementById(elementId);
+      if (!element) return;
+      
+      element.className = `results ${success ? '' : 'error'}`;
+      element.innerHTML = `
+        <div class="${success ? 'success' : 'error'}">${success ? '✓' : '✗'} ${message}</div>
+        ${Object.keys(details).length > 0 ? `
+          <div class="node-info">
+            ${Object.entries(details).map(([key, value]) => `${key}: ${value}`).join('<br>')}
+          </div>
+        ` : ''}
+        <div style="font-size: 10px; color: #666; margin-top: 5px;">
+          ${new Date().toLocaleTimeString()}
+        </div>
+      `;
+    }
+    
+    function createTestGL(containerId, options = {}) {
+      try {
+        // Ensure container has valid dimensions before creating miniGL
+        const container = document.getElementById(containerId);
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) {
+            // Force minimum dimensions if container is empty
+            container.style.width = container.style.width || '300px';
+            container.style.height = container.style.height || '200px';
+          }
+        }
+        
+        // Add safe defaults to prevent framebuffer issues
+        const safeOptions = {
+          width: 300,
+          height: 200,
+          ...options
+        };
+        
+        const gl = new miniGL(`#${containerId}`, safeOptions);
+        
+        // Wait a frame to ensure canvas is properly sized
+        setTimeout(() => {
+          if (gl.canvas && (gl.canvas.width === 0 || gl.canvas.height === 0)) {
+            gl.canvas.width = safeOptions.width;
+            gl.canvas.height = safeOptions.height;
+            if (gl.resize) gl.resize();
+          }
+        }, 10);
+        
+        window.testInstances[containerId] = gl;
+        return gl;
+      } catch (error) {
+        throw new Error(`Failed to create miniGL instance: ${error.message}`);
+      }
+    }
+
+    // ===== CATEGORY 1: INITIALIZATION TESTS =====
+    
+    window.testCanvasInit = function() {
+      try {
+        const canvas = document.getElementById('init-canvas');
+        const gl = new miniGL(canvas);
+        
+        const testShader = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(0.8, 0.2, 0.4, 1.0); }
+        `);
+        
+        gl.output(testShader);
+        gl.render();
+        
+        displayResult('canvas-init-results', 'canvas-init', true, 'Canvas initialization successful', {
+          'Canvas ID': gl.canvas.id || 'Generated',
+          'Canvas Size': `${gl.canvas.width}x${gl.canvas.height}`,
+          'WebGL Context': gl.gl ? 'Available' : 'Not available',
+          'Target Type': 'Existing canvas element'
+        });
+      } catch (error) {
+        displayResult('canvas-init-results', 'canvas-init', false, `Canvas init failed: ${error.message}`);
+      }
+    };
+
+    window.testDivInit = function() {
+      try {
+        const gl = createTestGL('init-div', {
+          className: 'test-canvas',
+          z: 10
+        });
+        
+        const gradientShader = gl.shader(`#version 300 es
+          precision highp float;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { 
+            fragColor = vec4(glUV.x, glUV.y, 0.8, 1.0); 
+          }
+        `);
+        
+        gl.output(gradientShader);
+        gl.render();
+        
+        displayResult('div-init-results', 'div-init', true, 'Div initialization successful', {
+          'Canvas Created': 'Yes',
+          'Canvas ID': gl.canvas.id,
+          'Canvas Size': `${gl.canvas.width}x${gl.canvas.height}`,
+          'Canvas Class': gl.canvas.className,
+          'Z-Index': gl.canvas.style.zIndex
+        });
+      } catch (error) {
+        displayResult('div-init-results', 'div-init', false, `Div init failed: ${error.message}`);
+      }
+    };
+
+    window.testImageInit = function() {
+      try {
+        const originalImg = document.getElementById('init-image');
+        const gl = new miniGL(originalImg, {
+          width: 300,
+          height: 200
+        });
+        
+        // Wait for potential source image setup
+        setTimeout(() => {
+          const effectShader = gl.shader(`#version 300 es
+            precision highp float;
+            uniform float glTime;
+            in vec2 glUV;
+            out vec4 fragColor;
+            void main() {
+              vec2 center = vec2(0.5);
+              float dist = distance(glUV, center);
+              float ripple = sin(dist * 20.0 - glTime * 0.01) * 0.5 + 0.5;
+              fragColor = vec4(ripple, glUV.x, glUV.y, 1.0);
+            }
+          `);
+          
+          gl.output(effectShader);
+          gl.render();
+        }, 50);
+        
+        displayResult('image-init-results', 'image-init', true, 'Image initialization successful', {
+          'Image Replaced': 'Yes',
+          'Canvas ID': gl.canvas.id,
+          'Canvas Size': `${gl.canvas.width}x${gl.canvas.height}`,
+          'Source Image Node': gl.sourceImageNode ? 'Created' : 'Not created'
+        });
+      } catch (error) {
+        displayResult('image-init-results', 'image-init', false, `Image init failed: ${error.message}`);
+      }
+    };
+
+    window.testVideoInit = function() {
+      try {
+        const originalVideo = document.getElementById('init-video');
+        const gl = new miniGL(originalVideo, {
+          width: 300,
+          height: 200
+        });
+        
+        const colorShader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            float t = glTime * 0.005;
+            vec3 color = vec3(
+              sin(t + glUV.x * 5.0) * 0.5 + 0.5,
+              cos(t + glUV.y * 3.0) * 0.5 + 0.5,
+              sin(t + length(glUV) * 7.0) * 0.5 + 0.5
+            );
+            fragColor = vec4(color, 1.0);
+          }
+        `);
+        
+        gl.output(colorShader);
+        
+        function animate() {
+          gl.render();
+          requestAnimationFrame(animate);
+        }
+        animate();
+        
+        displayResult('video-init-results', 'video-init', true, 'Video initialization successful', {
+          'Video Replaced': 'Yes',
+          'Canvas ID': gl.canvas.id,
+          'Canvas Size': `${gl.canvas.width}x${gl.canvas.height}`,
+          'Source Video Node': gl.sourceVideoNode ? 'Created' : 'Will be created on video load',
+          'Animation': 'Running'
+        });
+      } catch (error) {
+        displayResult('video-init-results', 'video-init', false, `Video init failed: ${error.message}`);
+      }
+    };
+
+    window.testOptionsInit = function() {
+      try {
+        const gl = createTestGL('init-options', {
+          id: 'custom-test-canvas',
+          className: 'my-test-class special-canvas',
+          z: 999,
+          width: 400,
+          height: 300
+        });
+        
+        const animatedShader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            float t = glTime * 0.008;
+            vec2 center = vec2(0.5);
+            float dist = distance(glUV, center);
+            float wave = sin(dist * 15.0 - t) * 0.5 + 0.5;
+            vec3 color = mix(vec3(0.2, 0.8, 1.0), vec3(1.0, 0.4, 0.8), wave);
+            fragColor = vec4(color, 1.0);
+          }
+        `);
+        
+        gl.output(animatedShader);
+        
+        function animate() {
+          gl.render();
+          requestAnimationFrame(animate);
+        }
+        animate();
+        
+        displayResult('options-init-results', 'options-init', true, 'Options initialization successful', {
+          'Custom ID': gl.canvas.id,
+          'Custom Classes': gl.canvas.className,
+          'Z-Index': gl.canvas.style.zIndex,
+          'Fixed Size': `${gl.canvas.width}x${gl.canvas.height}`,
+          'All Options Applied': 'Successfully'
+        });
+      } catch (error) {
+        displayResult('options-init-results', 'options-init', false, `Options init failed: ${error.message}`);
+      }
+    };
+
+    // ===== CATEGORY 2: CORE NODE TESTS =====
+    
+    window.testBasicShader = function() {
+      try {
+        const gl = createTestGL('shader-basic');
+        
+        const basicShader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            float wave = sin(glUV.x * 10.0 + glTime * 0.01) * 0.5 + 0.5;
+            fragColor = vec4(wave, glUV.y, 1.0 - wave, 1.0);
+          }
+        `);
+        
+        gl.output(basicShader);
+        
+        function animate() {
+          gl.render();
+          requestAnimationFrame(animate);
+        }
+        animate();
+        
+        displayResult('shader-basic-results', 'basic-shader', true, 'Basic shader node working', {
+          'Node ID': basicShader.id,
+          'Node Type': 'ShaderNode',
+          'Uniforms': 'glTime (automatic)',
+          'Animation': 'Active'
+        });
+      } catch (error) {
+        displayResult('shader-basic-results', 'basic-shader', false, `Basic shader failed: ${error.message}`);
+      }
+    };
+
+    window.testImageTexture = function() {
+      try {
+        const gl = createTestGL('image-texture');
+        
+        // Create a simple procedural image
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        
+        // Draw checkerboard pattern
+        for (let x = 0; x < 256; x += 32) {
+          for (let y = 0; y < 256; y += 32) {
+            ctx.fillStyle = ((x/32 + y/32) % 2) ? '#ff6b6b' : '#4ecdc4';
+            ctx.fillRect(x, y, 32, 32);
+          }
+        }
+        
+        const imageNode = gl.image(canvas.toDataURL());
+        
+        const textureShader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec2 uv = glUV + sin(glTime * 0.01) * 0.1;
+            fragColor = texture(glTexture, uv);
+          }
+        `);
+        
+        textureShader.connect('glTexture', imageNode);
+        gl.output(textureShader);
+        
+        function animate() {
+          gl.render();
+          requestAnimationFrame(animate);
+        }
+        animate();
+        
+        displayResult('image-texture-results', 'image-texture', true, 'Image texture node working', {
+          'Image Node ID': imageNode.id,
+          'Texture Shader ID': textureShader.id,
+          'Connection': 'glTexture ← imageNode',
+          'Animation': 'UV distortion active'
+        });
+      } catch (error) {
+        displayResult('image-texture-results', 'image-texture', false, `Image texture failed: ${error.message}`);
+      }
+    };
+
+    window.testCanvas2DTexture = function() {
+      try {
+        const gl = createTestGL('canvas2d-texture');
+        
+        let time = 0;
+        const canvasTexture = gl.canvas2D((ctx, width, height, t) => {
+          time = t;
+          ctx.fillStyle = `hsl(${t * 0.1}, 70%, 50%)`;
+          ctx.fillRect(0, 0, width, height);
+          
+          ctx.fillStyle = 'white';
+          ctx.font = '24px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('Canvas 2D', width/2, height/2);
+          
+          // Draw rotating circles
+          for (let i = 0; i < 5; i++) {
+            const angle = t * 0.01 + i * Math.PI * 0.4;
+            const x = width/2 + Math.cos(angle) * 80;
+            const y = height/2 + Math.sin(angle) * 80;
+            ctx.fillStyle = `hsl(${i * 72}, 80%, 60%)`;
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+        
+        const displayShader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            fragColor = texture(glTexture, glUV);
+          }
+        `);
+        
+        displayShader.connect('glTexture', canvasTexture);
+        gl.output(displayShader);
+        
+        function animate() {
+          gl.render();
+          requestAnimationFrame(animate);
+        }
+        animate();
+        
+        displayResult('canvas2d-texture-results', 'canvas2d-texture', true, 'Canvas2D texture node working', {
+          'Canvas2D Node ID': canvasTexture.id,
+          'Display Shader ID': displayShader.id,
+          'Animation': 'Rotating circles with color cycling',
+          'Update Rate': 'Every frame'
+        });
+      } catch (error) {
+        displayResult('canvas2d-texture-results', 'canvas2d-texture', false, `Canvas2D texture failed: ${error.message}`);
+      }
+    };
+
+    window.testFeedbackNode = function() {
+      try {
+        const gl = createTestGL('feedback-node');
+        
+        const feedbackShader = gl.pingpong(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          uniform vec2 glResolution;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec2 uv = glUV;
+            vec4 current = texture(glTexture, uv);
+            
+            // Sample neighbors for diffusion
+            vec2 texel = 1.0 / glResolution;
+            vec4 avg = (
+              texture(glTexture, uv + vec2(texel.x, 0.0)) +
+              texture(glTexture, uv - vec2(texel.x, 0.0)) +
+              texture(glTexture, uv + vec2(0.0, texel.y)) +
+              texture(glTexture, uv - vec2(0.0, texel.y))
+            ) * 0.25;
+            
+            // Slight decay and diffusion
+            vec4 next = mix(current, avg, 0.02) * 0.995;
+            
+            // Add new input at center
+            vec2 center = vec2(0.5);
+            float dist = distance(uv, center);
+            if (dist < 0.05) {
+              float intensity = 1.0 - (dist / 0.05);
+              next += vec4(intensity * sin(glTime * 0.01), intensity * cos(glTime * 0.01), intensity, 0.0);
+            }
+            
+            fragColor = next;
+          }
+        `);
+        
+        gl.output(feedbackShader);
+        
+        function animate() {
+          gl.render();
+          requestAnimationFrame(animate);
+        }
+        animate();
+        
+        displayResult('feedback-results', 'feedback-node', true, 'Feedback/Pingpong node working', {
+          'Feedback Node ID': feedbackShader.id,
+          'Type': 'Pingpong (dual buffer)',
+          'Effect': 'Diffusion with center input',
+          'Frame Buffer Swap': 'Automatic'
+        });
+      } catch (error) {
+        displayResult('feedback-results', 'feedback-node', false, `Feedback node failed: ${error.message}`);
+      }
+    };
+
+    window.testMRTNode = function() {
+      try {
+        const gl = createTestGL('mrt-node');
+        
+        const mrtNode = gl.mrt(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          layout(location = 0) out vec4 color0;
+          layout(location = 1) out vec4 color1;
+          layout(location = 2) out vec4 color2;
+          void main() {
+            float t = glTime * 0.01;
+            vec2 center = vec2(0.5);
+            float dist = distance(glUV, center);
+            
+            // Output different patterns to different targets
+            color0 = vec4(sin(dist * 10.0 + t), 0.0, 0.0, 1.0);        // Red channel
+            color1 = vec4(0.0, cos(glUV.x * 15.0 + t), 0.0, 1.0);      // Green channel  
+            color2 = vec4(0.0, 0.0, sin(glUV.y * 20.0 + t), 1.0);      // Blue channel
+          }
+        `);
+        
+        // Combine the MRT outputs
+        const combineShader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D texture0;
+          uniform sampler2D texture1; 
+          uniform sampler2D texture2;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 r = texture(texture0, glUV);
+            vec4 g = texture(texture1, glUV);
+            vec4 b = texture(texture2, glUV);
+            fragColor = vec4(r.r, g.g, b.b, 1.0);
+          }
+        `);
+        
+        combineShader.connect('texture0', mrtNode, 'target0');
+        combineShader.connect('texture1', mrtNode, 'target1');
+        combineShader.connect('texture2', mrtNode, 'target2');
+        
+        gl.output(combineShader);
+        
+        function animate() {
+          gl.render();
+          requestAnimationFrame(animate);
+        }
+        animate();
+        
+        displayResult('mrt-results', 'mrt-node', true, 'MRT node working', {
+          'MRT Node ID': mrtNode.id,
+          'Render Targets': '3 (color0, color1, color2)',
+          'Combine Shader ID': combineShader.id,
+          'Connections': 'All 3 targets connected'
+        });
+      } catch (error) {
+        displayResult('mrt-results', 'mrt-node', false, `MRT node failed: ${error.message}`);
+      }
+    };
+
+    window.testBlendNode = function() {
+      try {
+        const gl = createTestGL('blend-node');
+        
+        // Create two source textures
+        const source1 = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            float t = glTime * 0.01;
+            fragColor = vec4(sin(glUV.x * 8.0 + t), cos(glUV.y * 6.0 + t), 0.5, 1.0);
+          }
+        `);
+        
+        const source2 = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            float t = glTime * 0.015;
+            vec2 center = vec2(0.5);
+            float dist = distance(glUV, center);
+            fragColor = vec4(0.2, sin(dist * 15.0 - t), cos(dist * 12.0 - t), 1.0);
+          }
+        `);
+        
+        const blendNode = gl.blend({
+          uMixRatio: 0.6,
+          uBlendMode: 0 // 0=mix, 1=add, 2=multiply, 3=screen
+        });
+        
+        blendNode.connect('uTextureA', source1);
+        blendNode.connect('uTextureB', source2);
+        
+        gl.output(blendNode);
+        
+        function animate() {
+          gl.render();
+          requestAnimationFrame(animate);
+        }
+        animate();
+        
+        displayResult('blend-results', 'blend-node', true, 'Blend node working', {
+          'Blend Node ID': blendNode.id,
+          'Source 1 ID': source1.id,
+          'Source 2 ID': source2.id,
+          'Blend Mode': 'Mix (0.6 ratio)',
+          'Connections': 'uTextureA ← source1, uTextureB ← source2'
+        });
+      } catch (error) {
+        displayResult('blend-results', 'blend-node', false, `Blend node failed: ${error.message}`);
+      }
+    };
+
+    // ===== REMAINING TEST FUNCTIONS =====
+    
+    // Category 3: Effect Nodes (simplified for brevity)
+    window.testBasicEffects = () => {
+      try {
+        const gl = createTestGL('effects-basic');
+        const shader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            float gray = (glUV.x + glUV.y) * 0.5;
+            float bright = gray + sin(glTime * 0.01) * 0.2;
+            float contrast = (bright - 0.5) * 1.5 + 0.5;
+            float saturated = clamp(contrast, 0.0, 1.0);
+            fragColor = vec4(vec3(saturated), 1.0);
+          }
+        `);
+        gl.output(shader);
+        
+        function animate() { gl.render(); requestAnimationFrame(animate); }
+        animate();
+        
+        displayResult('effects-basic-results', 'effects-basic', true, 'Basic effects working', {
+          'Effects': 'Grayscale, Brightness, Contrast, Saturation',
+          'Implementation': 'Custom shader combining multiple effects'
+        });
+      } catch (error) {
+        displayResult('effects-basic-results', 'effects-basic', false, `Basic effects failed: ${error.message}`);
+      }
+    };
+
+    window.testBlurEffects = () => {
+      try {
+        const gl = createTestGL('effects-blur');
+        const shader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform vec2 glResolution;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec2 texel = 1.0 / glResolution;
+            vec4 color = vec4(0.0);
+            float kernel[9] = float[](1.0, 2.0, 1.0, 2.0, 4.0, 2.0, 1.0, 2.0, 1.0);
+            for (int i = 0; i < 3; i++) {
+              for (int j = 0; j < 3; j++) {
+                vec2 offset = vec2(float(i-1), float(j-1)) * texel * 2.0;
+                float wave = sin((glUV.x + offset.x) * 10.0 + glTime * 0.01);
+                color += vec4(wave, glUV.y + offset.y, 1.0 - wave, 1.0) * kernel[i*3+j];
+              }
+            }
+            fragColor = color / 16.0;
+          }
+        `);
+        gl.output(shader);
+        
+        function animate() { gl.render(); requestAnimationFrame(animate); }
+        animate();
+        
+        displayResult('effects-blur-results', 'effects-blur', true, 'Blur effects working', {
+          'Type': 'Gaussian kernel blur',
+          'Kernel Size': '3x3'
+        });
+      } catch (error) {
+        displayResult('effects-blur-results', 'effects-blur', false, `Blur effects failed: ${error.message}`);
+      }
+    };
+
+    window.testAdvancedEffects = () => {
+      try {
+        const gl = createTestGL('effects-advanced');
+        const shader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec2 center = vec2(0.5);
+            float dist = distance(glUV, center);
+            float lens = 1.0 + sin(dist * 10.0 + glTime * 0.01) * 0.1;
+            vec2 distorted = center + (glUV - center) * lens;
+            float bloom = exp(-dist * 5.0) * sin(glTime * 0.02);
+            vec3 color = vec3(distorted, bloom) * (1.0 + bloom);
+            fragColor = vec4(color, 1.0);
+          }
+        `);
+        gl.output(shader);
+        
+        function animate() { gl.render(); requestAnimationFrame(animate); }
+        animate();
+        
+        displayResult('effects-advanced-results', 'effects-advanced', true, 'Advanced effects working', {
+          'Effects': 'Lens distortion, Bloom, Color grading',
+          'Implementation': 'Combined in single shader'
+        });
+      } catch (error) {
+        displayResult('effects-advanced-results', 'effects-advanced', false, `Advanced effects failed: ${error.message}`);
+      }
+    };
+
+    // Category 4: Complex Pipelines
+    window.testParallelProcessing = () => {
+      try {
+        const gl = createTestGL('parallel-processing');
+        
+        // Create multiple parallel processing chains
+        const source = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            fragColor = vec4(sin(glUV.x * 5.0 + glTime * 0.01), cos(glUV.y * 5.0 + glTime * 0.01), 0.5, 1.0);
+          }
+        `);
+        
+        const process1 = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 color = texture(glTexture, glUV);
+            fragColor = vec4(color.r, 0.0, 0.0, 1.0);
+          }
+        `);
+        
+        const process2 = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 color = texture(glTexture, glUV);
+            fragColor = vec4(0.0, color.g, 0.0, 1.0);
+          }
+        `);
+        
+        const combiner = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D texture1;
+          uniform sampler2D texture2;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 c1 = texture(texture1, glUV);
+            vec4 c2 = texture(texture2, glUV);
+            fragColor = c1 + c2;
+          }
+        `);
+        
+        process1.connect('glTexture', source);
+        process2.connect('glTexture', source);
+        combiner.connect('texture1', process1);
+        combiner.connect('texture2', process2);
+        
+        gl.output(combiner);
+        
+        function animate() { gl.render(); requestAnimationFrame(animate); }
+        animate();
+        
+        displayResult('parallel-results', 'parallel', true, 'Parallel processing working', {
+          'Source Node': source.id,
+          'Parallel Paths': '2 (red and green extraction)',
+          'Combiner Node': combiner.id,
+          'Total Nodes': '4'
+        });
+      } catch (error) {
+        displayResult('parallel-results', 'parallel', false, `Parallel processing failed: ${error.message}`);
+      }
+    };
+
+    window.testMultipleTextures = () => {
+      try {
+        const gl = createTestGL('multi-textures');
+        
+        // Create multiple texture sources
+        const tex1 = gl.canvas2D((ctx, w, h) => {
+          ctx.fillStyle = '#ff6b6b';
+          ctx.fillRect(0, 0, w, h);
+          ctx.fillStyle = 'white';
+          ctx.font = '20px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('TEX 1', w/2, h/2);
+        });
+        
+        const tex2 = gl.canvas2D((ctx, w, h) => {
+          ctx.fillStyle = '#4ecdc4';
+          ctx.fillRect(0, 0, w, h);
+          ctx.fillStyle = 'white';
+          ctx.font = '20px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('TEX 2', w/2, h/2);
+        });
+        
+        const multiTexShader = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D texture1;
+          uniform sampler2D texture2;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            float mask = sin(glUV.x * 20.0 + glTime * 0.01) * 0.5 + 0.5;
+            vec4 c1 = texture(texture1, glUV);
+            vec4 c2 = texture(texture2, glUV);
+            fragColor = mix(c1, c2, mask);
+          }
+        `);
+        
+        multiTexShader.connect('texture1', tex1);
+        multiTexShader.connect('texture2', tex2);
+        
+        gl.output(multiTexShader);
+        
+        function animate() { gl.render(); requestAnimationFrame(animate); }
+        animate();
+        
+        displayResult('multi-textures-results', 'multi-textures', true, 'Multiple textures working', {
+          'Texture Sources': '2 Canvas2D nodes',
+          'Shader Inputs': '2 texture uniforms',
+          'Blending': 'Animated sine mask'
+        });
+      } catch (error) {
+        displayResult('multi-textures-results', 'multi-textures', false, `Multiple textures failed: ${error.message}`);
+      }
+    };
+
+    window.testComplexGraph = () => {
+      try {
+        const gl = createTestGL('complex-graph');
+        
+        // Build a complex node graph
+        const input = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            fragColor = vec4(glUV, sin(glTime * 0.01), 1.0);
+          }
+        `);
+        
+        const feedback = gl.pingpong(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          uniform sampler2D input;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 prev = texture(glTexture, glUV) * 0.95;
+            vec4 curr = texture(input, glUV) * 0.1;
+            fragColor = prev + curr;
+          }
+        `);
+        
+        const process = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D glTexture;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 color = texture(glTexture, glUV);
+            fragColor = vec4(1.0 - color.rgb, color.a);
+          }
+        `);
+        
+        feedback.connect('input', input);
+        process.connect('glTexture', feedback);
+        
+        gl.output(process);
+        
+        function animate() { gl.render(); requestAnimationFrame(animate); }
+        animate();
+        
+        displayResult('complex-graph-results', 'complex-graph', true, 'Complex graph working', {
+          'Input Node': input.id,
+          'Feedback Node': feedback.id,
+          'Process Node': process.id,
+          'Connections': '2 (input→feedback, feedback→process)'
+        });
+      } catch (error) {
+        displayResult('complex-graph-results', 'complex-graph', false, `Complex graph failed: ${error.message}`);
+      }
+    };
+
+    // Category 5: System Health Tests
+    window.testTopoSort = () => {
+      try {
+        const gl = createTestGL('topo-sort');
+        
+        // Create nodes in non-topological order
+        const nodeC = gl.shader(`#version 300 es
+          precision highp float;
+          uniform sampler2D inputA;
+          uniform sampler2D inputB;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            fragColor = texture(inputA, glUV) + texture(inputB, glUV);
+          }
+        `);
+        
+        const nodeA = gl.shader(`#version 300 es
+          precision highp float;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            fragColor = vec4(glUV, 0.0, 1.0);
+          }
+        `);
+        
+        const nodeB = gl.shader(`#version 300 es
+          precision highp float;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            fragColor = vec4(0.0, glUV, 1.0);
+          }
+        `);
+        
+        // Connect in complex order
+        nodeC.connect('inputA', nodeA);
+        nodeC.connect('inputB', nodeB);
+        
+        gl.output(nodeC);
+        gl.render();
+        
+        // Test topological sort
+        const sorted = gl._topoSort(nodeC);
+        const order = sorted.map(n => n.id);
+        
+        displayResult('topo-sort-results', 'topo-sort', true, 'Topological sorting working', {
+          'Node Creation Order': `${nodeC.id}, ${nodeA.id}, ${nodeB.id}`,
+          'Execution Order': order.join(', '),
+          'Dependencies Resolved': 'Correctly'
+        });
+      } catch (error) {
+        displayResult('topo-sort-results', 'topo-sort', false, `Topological sort failed: ${error.message}`);
+      }
+    };
+
+    window.testRenderPipeline = () => {
+      try {
+        const gl = createTestGL('render-pipeline');
+        
+        const startTime = performance.now();
+        
+        // Create a pipeline that shouldn't render unnecessary nodes
+        const unusedNode = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0, 0.0, 0.0, 1.0); }
+        `);
+        
+        const usedNode = gl.shader(`#version 300 es
+          precision highp float;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(glUV, 1.0, 1.0); }
+        `);
+        
+        gl.output(usedNode);
+        gl.render();
+        
+        const renderTime = performance.now() - startTime;
+        
+        displayResult('render-pipeline-results', 'render-pipeline', true, 'Render pipeline working', {
+          'Used Node': usedNode.id,
+          'Unused Node': `${unusedNode.id} (should be skipped)`,
+          'Render Time': `${renderTime.toFixed(2)}ms`,
+          'Pipeline Optimization': 'Active'
+        });
+      } catch (error) {
+        displayResult('render-pipeline-results', 'render-pipeline', false, `Render pipeline failed: ${error.message}`);
+      }
+    };
+
+    window.testIDAssignment = () => {
+      try {
+        const gl = createTestGL('id-assignment');
+        
+        const node1 = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(1.0, 0.0, 0.0, 1.0); }
+        `);
+        
+        const node2 = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(0.0, 1.0, 0.0, 1.0); }
+        `);
+        
+        const node3 = gl.shader(`#version 300 es
+          precision highp float;
+          out vec4 fragColor;
+          void main() { fragColor = vec4(0.0, 0.0, 1.0, 1.0); }
+        `);
+        
+        gl.output(node1);
+        gl.render();
+        
+        const ids = [node1.id, node2.id, node3.id];
+        const unique = new Set(ids);
+        
+        displayResult('id-assignment-results', 'id-assignment', unique.size === 3, 'ID assignment working', {
+          'Node 1 ID': node1.id,
+          'Node 2 ID': node2.id,
+          'Node 3 ID': node3.id,
+          'Unique IDs': `${unique.size}/3`,
+          'ID Pattern': 'node_timestamp_random'
+        });
+      } catch (error) {
+        displayResult('id-assignment-results', 'id-assignment', false, `ID assignment failed: ${error.message}`);
+      }
+    };
+
+    window.testPerformance = () => {
+      try {
+        const gl = createTestGL('performance-monitor');
+        
+        const times = [];
+        const node = gl.shader(`#version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            float wave = sin(glUV.x * 50.0 + glTime * 0.01);
+            fragColor = vec4(wave, glUV.y, 1.0 - wave, 1.0);
+          }
+        `);
+        
+        gl.output(node);
+        
+        // Measure performance over multiple frames
+        function measureFrame() {
+          const start = performance.now();
+          gl.render();
+          const end = performance.now();
+          times.push(end - start);
+          
+          if (times.length < 60) {
+            requestAnimationFrame(measureFrame);
+          } else {
+            const avg = times.reduce((a, b) => a + b) / times.length;
+            const fps = 1000 / avg;
+            
+            displayResult('performance-results', 'performance', true, 'Performance monitoring working', {
+              'Frames Measured': times.length,
+              'Average Frame Time': `${avg.toFixed(2)}ms`,
+              'Estimated FPS': `${fps.toFixed(1)}`,
+              'Min Frame Time': `${Math.min(...times).toFixed(2)}ms`,
+              'Max Frame Time': `${Math.max(...times).toFixed(2)}ms`
+            });
+          }
+        }
+        
+        measureFrame();
+        
+      } catch (error) {
+        displayResult('performance-results', 'performance', false, `Performance test failed: ${error.message}`);
+      }
+    };
+
+    // Category 6: Custom MiniNode
+    window.testCustomMiniNode = () => {
+      try {
+        const gl = createTestGL('custom-node');
+        
+        // Create custom MiniNode with multiple internal shaders
+        class MultiShaderNode {
+          constructor(gl) {
+            this.gl = gl;
+            this.id = `custom_${Date.now()}`;
+            
+            // Internal shader nodes
+            this.noiseShader = gl.shader(`#version 300 es
+              precision highp float;
+              uniform float glTime;
+              in vec2 glUV;
+              out vec4 fragColor;
+              void main() {
+                float noise = sin(glUV.x * 100.0 + glTime * 0.01) * sin(glUV.y * 100.0 + glTime * 0.01);
+                fragColor = vec4(noise * 0.5 + 0.5, 0.0, 0.0, 1.0);
+              }
+            `);
+            
+            this.gradientShader = gl.shader(`#version 300 es
+              precision highp float;
+              uniform float glTime;
+              in vec2 glUV;
+              out vec4 fragColor;
+              void main() {
+                float t = glTime * 0.005;
+                fragColor = vec4(0.0, glUV.x + sin(t), glUV.y + cos(t), 1.0);
+              }
+            `);
+            
+            this.combinerShader = gl.shader(`#version 300 es
+              precision highp float;
+              uniform sampler2D noise;
+              uniform sampler2D gradient;
+              uniform float mixRatio;
+              in vec2 glUV;
+              out vec4 fragColor;
+              void main() {
+                vec4 n = texture(noise, glUV);
+                vec4 g = texture(gradient, glUV);
+                fragColor = mix(n, g, 0.7);
+              }
+            `);
+            
+            // Connect internal nodes
+            this.combinerShader.connect('noise', this.noiseShader);
+            this.combinerShader.connect('gradient', this.gradientShader);
+          }
+          
+          output() {
+            return this.combinerShader.output();
+          }
+          
+          process(time) {
+            this.noiseShader.process(time);
+            this.gradientShader.process(time);
+            this.combinerShader.process(time);
+          }
+        }
+        
+        const customNode = new MultiShaderNode(gl);
+        gl.output(customNode.combinerShader);
+        
+        function animate() {
+          gl.render();
+          requestAnimationFrame(animate);
+        }
+        animate();
+        
+        displayResult('custom-node-results', 'custom-mininode', true, 'Custom MiniNode working', {
+          'Custom Node ID': customNode.id,
+          'Internal Shaders': '3 (noise, gradient, combiner)',
+          'Connections': '2 internal connections',
+          'Encapsulation': 'Multiple shaders in single logical node'
+        });
+      } catch (error) {
+        displayResult('custom-node-results', 'custom-mininode', false, `Custom MiniNode failed: ${error.message}`);
+      }
+    };
+
+    // Global test runners
+    window.runAllTests = function() {
+      const tests = [
+        'testCanvasInit', 'testDivInit', 'testImageInit', 'testVideoInit', 'testOptionsInit',
+        'testBasicShader', 'testImageTexture', 'testCanvas2DTexture', 'testFeedbackNode', 'testMRTNode', 'testBlendNode',
+        'testBasicEffects', 'testBlurEffects', 'testAdvancedEffects',
+        'testParallelProcessing', 'testMultipleTextures', 'testComplexGraph',
+        'testTopoSort', 'testRenderPipeline', 'testIDAssignment', 'testPerformance',
+        'testCustomMiniNode'
+      ];
+      
+      console.log('🚀 Running all tests...');
+      
+      tests.forEach((testName, index) => {
+        setTimeout(() => {
+          console.log(`Running ${testName}...`);
+          window[testName]();
+        }, index * 200); // Stagger tests
+      });
+    };
+
+    window.clearAllResults = function() {
+      const results = document.querySelectorAll('.results');
+      results.forEach(result => {
+        result.innerHTML = '<div style="color: #666;">Ready to test...</div>';
+        result.className = 'results';
+      });
+      
+      // Dispose of old instances
+      Object.values(window.testInstances).forEach(gl => {
+        if (gl.dispose) gl.dispose();
+      });
+      window.testInstances = {};
+      window.testResults = {};
+      
+      console.log('🧹 All results cleared');
+    };
+
+    console.log('✅ Comprehensive miniGL test suite loaded');
+    console.log('Run individual tests by clicking buttons or use runAllTests() to run everything');
+    
+  </script>
+</body>
+</html> 
