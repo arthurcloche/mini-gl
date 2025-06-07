@@ -17,6 +17,8 @@ Edged plasma : https://www.shadertoy.com/view/4slXzs
 Glossy : https://www.shadertoy.com/view/lX2GDR
 examples : https://github.com/fand/vfx-js
 
+noises  :https://github.com/hughsk/glsl-noise
+
 halftone dithering : https://www.shadertoy.com/view/wdBGzR
 guilloche dithering : https://www.shadertoy.com/view/tsSSDc
 grain dithering : https://www.shadertoy.com/view/4tlyWs
