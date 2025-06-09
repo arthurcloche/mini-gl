@@ -1,8 +1,7 @@
-
 ![minigl](https://github.com/user-attachments/assets/f064614c-3aac-4d3d-a3da-e1e40c1212c6)
 # miniGL
 > "Why does drawing a circle in WebGL take 300 lines or a 2MB library?"  
-> miniGL: Minimal node-based WebGL2 creative coding engine. Compose fragment shaders, feedback, blend, image/video/canvas textures, and more with a simple, chainable API.  
+> miniGL: Minimal node-based WebGL2 creative coding engine. Compose fragment shaders, feedback, blend, image/video/canvas textures, particles, and more with a simple, chainable API.  
 > No build step. No bloat. No tears.
 
 ---
@@ -16,23 +15,24 @@ miniGL is a node graph for WebGL2, inspired by ShaderToy, but with a modern, min
 
 ## How It All Connects (The Node Graph)
 
-Here's the big idea: you build a graph of nodes, each one does a thing (shader, blend, feedback, whatever), and you connect them up.  
+Here's the big idea: you build a graph of nodes, each one does a thing (shader, blend, feedback, particles, whatever), and you connect them up.  
 No more spaghetti code. No more "wait, which framebuffer is this?"
 
 ```
-[Image]   [Canvas]   [Video]
-    \         |         /
-     \        |        /
-      [Blend/Shader/Group]   [Noise]
-                |         /
-             [Blend/Shader]
+[Image]   [Canvas2D]   [Video]   [Particles]
+    \         |           /         |
+     \        |          /          |
+      [Blend/Shader/MiniNode]   [Noise]
+                |                  /
+             [Shader/Feedback]
                   |
               [Output]
 ```
-- Each [Node] is a processing step (shader, blend, feedback, etc)
-- You connect nodes with `gl.connect(a, b, 'inputName')`
-- The graph is topo-sorted and only reachable nodes are processed
+- Each [Node] is a processing step (shader, blend, feedback, particles, etc)
+- You connect nodes with `gl.connect(sourceNode, targetNode, 'inputName')`
+- The graph is automatically topo-sorted and only reachable nodes are processed
 - Feedback nodes (pingpong) can create cycles for effects
+- MiniNodes let you encapsulate complex multi-node effects into reusable components
 
 ---
 
@@ -57,7 +57,7 @@ gl.useChunks(miniChunks); // enables <#tag> support in shaders
 Uniforms are values you pass to shaders. Set them when you make a node, or update them later. They can be numbers, booleans, arrays, `{x, y, z, w}` objects, or `{ texture }` objects.
 
 ```js
-const node = gl.shader(fragmentShader, { uniforms: { uTime: 0, uAmount: 1.0 } });
+const node = gl.shader(fragmentShader, { uTime: 0, uAmount: 1.0 });
 node.updateUniform('uAmount', 0.5);
 ```
 
@@ -90,7 +90,7 @@ const node = gl.shader(`
     float d = length(glCoord - 0.5);
     fragColor = vec4(vec3(d < 0.25 + 0.1 * sin(uTime)), 1.0);
   }
-`, { uniforms: { uTime: 0 } });
+`, { uTime: 0 });
 gl.output(node);
 ```
 
@@ -108,12 +108,12 @@ const feedback = gl.pingpong(`
   void main() {
     fragColor = texture(glPrevious, glCoord) * uAlpha;
   }
-`, { uniforms: { uAlpha: 0.99 } });
+`, { uAlpha: 0.99 });
 gl.output(feedback);
 ```
 
 ### Blend Node
-Blend two textures together. Pick a blend mode (`add`, `multiply`, `screen`, etc) and an opacity. Connect your base and blend nodes.
+Blend two textures together. Pick a blend mode (`add`, `multiply`, `screen`, `overlay`, `normal`) and an opacity. Connect your base and blend nodes.
 
 ```js
 const a = gl.shader(...);
@@ -125,10 +125,10 @@ gl.output(blend);
 ```
 
 ### Image Node
-Load an image as a texture. That's it.
+Load an image as a texture. Supports different fitting modes.
 
 ```js
-const img = gl.image('myimg.jpg');
+const img = gl.image('myimg.jpg', { fitting: 'cover' });
 gl.output(img);
 ```
 
@@ -140,11 +140,11 @@ const vid = gl.video('myvid.mp4');
 gl.output(vid);
 ```
 
-### Canvas Node
+### Canvas2D Node
 Use a 2D canvas as a texture, updated by your draw callback.
 
 ```js
-const canvasNode = gl.canvas((ctx, w, h) => {
+const canvasNode = gl.canvas2D((ctx, w, h) => {
   ctx.fillStyle = 'red';
   ctx.beginPath();
   ctx.arc(w/2, h/2, Math.min(w,h)/4, 0, 2*Math.PI);
@@ -187,16 +187,59 @@ gl.connect(mrt, sum, 'texB', '2');
 gl.output(sum);
 ```
 
-### Group Node (Subgraph)
-Build a subgraph for custom multi-pass effects. It's like a mini miniGL inside your miniGL.
+### Particles Node
+Create instanced particle systems with built-in simulation or connect your own.
 
 ```js
-const group = gl.group();
-const a = group.shader(...);
-const b = group.shader(...);
-group.connect(a, b, 'uInput');
-group.output(b);
-gl.output(group);
+const particles = gl.particles({ 
+  count: 10000, 
+  size: 0.01,
+  gravity: 0.001,
+  damping: 0.98
+});
+gl.output(particles);
+
+// Or with custom rendering:
+const customParticles = particles.particle(`
+  #version 300 es
+  precision highp float;
+  in vec2 particleUV;
+  in vec4 particleColor;
+  out vec4 fragColor;
+  void main() {
+    float dist = length(particleUV - 0.5);
+    float alpha = 1.0 - smoothstep(0.0, 0.5, dist);
+    fragColor = vec4(particleColor.rgb, alpha);
+  }
+`, { customUniform: 1.0 });
+```
+
+### MiniNode (Complex Multi-Node Effects)
+Wrap multiple nodes into a single reusable component with custom input/uniform routing.
+
+```js
+// Create a complex effect internally
+const blur1 = gl.shader(blurShader, { amount: 2.0 });
+const blur2 = gl.shader(blurShader, { amount: 4.0 });
+gl.connect(blur1, blur2, 'glTexture');
+
+// Wrap it in a MiniNode
+const doubleBlur = new MiniNode(gl, blur2, { 
+  internalNodes: [blur1, blur2],
+  name: 'DoubleBlur'
+});
+
+// Configure external interface
+doubleBlur
+  .input('texture', blur1, 'glTexture')  // Route external 'texture' input to blur1
+  .uniform('amount', blur1, 'amount')    // Route external 'amount' uniform to blur1
+  .uniform('strength', blur2, 'amount'); // Route external 'strength' uniform to blur2
+
+// Use it like any other node
+const source = gl.image('photo.jpg');
+gl.connect(source, doubleBlur, 'texture');
+doubleBlur.updateUniform('amount', 3.0);
+gl.output(doubleBlur);
 ```
 
 ---
@@ -206,6 +249,9 @@ gl.output(group);
 gl.connect(sourceNode, targetNode, inputName, outputName = 'default');
 // Example:
 gl.connect(noiseNode, colorNode, 'uNoise');
+
+// Or use the node's connect method directly:
+colorNode.connect('uNoise', noiseNode);
 ```
 
 ## Output
@@ -214,17 +260,75 @@ gl.output(node); // Set the final node to render to screen
 ```
 
 ## Blend Modes
-- `add`, `multiply`, `screen`, `overlay`, `normal`, etc. (see your chunk lib for all)
+Built-in blend modes: `normal`, `add`, `multiply`, `screen`, `overlay`
+
+---
+
+## MiniNode: Building Complex Reusable Effects
+
+MiniNode lets you encapsulate complex multi-node effects into a single, reusable component. Think of it as creating your own custom node type.
+
+### Basic MiniNode Creation
+```js
+// Create internal node graph
+const step1 = gl.shader(shader1, uniforms1);
+const step2 = gl.shader(shader2, uniforms2);
+const step3 = gl.blend({ blendMode: 'add' });
+
+// Connect internal nodes
+gl.connect(step1, step2, 'input');
+gl.connect(step2, step3, 'glBase');
+
+// Wrap in MiniNode (step3 is the output)
+const myEffect = new MiniNode(gl, step3, {
+  internalNodes: [step1, step2, step3],
+  name: 'MyCustomEffect'
+});
+```
+
+### Input and Uniform Routing
+```js
+// Route external inputs to specific internal nodes
+myEffect
+  .input('mainTexture', step1, 'glTexture')   // External 'mainTexture' → step1's 'glTexture'
+  .input('blendTexture', step3, 'glBlend')    // External 'blendTexture' → step3's 'glBlend'
+  .uniform('intensity', step1, 'amount')      // External 'intensity' → step1's 'amount'
+  .uniform('opacity', step3, 'opacity');      // External 'opacity' → step3's 'opacity'
+
+// Use the MiniNode like any other node
+const source = gl.image('texture.jpg');
+const overlay = gl.video('overlay.mp4');
+
+gl.connect(source, myEffect, 'mainTexture');
+gl.connect(overlay, myEffect, 'blendTexture');
+myEffect.updateUniform('intensity', 0.8);
+myEffect.updateUniform('opacity', 0.6);
+
+gl.output(myEffect);
+```
+
+### Event Handlers and Custom Logic
+```js
+myEffect
+  .onConnect((inputName, sourceNode) => {
+    console.log(`Connected ${sourceNode.name} to ${inputName}`);
+  })
+  .onUniform((key, value) => {
+    console.log(`Updated uniform ${key} to ${value}`);
+  })
+  .helper('fade', function(amount) {
+    this.updateUniform('opacity', amount);
+    return this;
+  });
+
+// Use custom helper
+myEffect.fade(0.5);
+```
 
 ---
 
 ## Shader Snippets (Optional)
 Want to use `<#category.name>` tags in your GLSL? Call `gl.useChunks(miniChunks)` with your chunk library. If you don't, `<#tags>` are ignored and shaders are not preprocessed (zero overhead).
-
----
-
-## Minimal Test Suite
-See `test/graph.test.js` for dry graph logic tests (no rendering, just node plumbing).
 
 ---
 
@@ -241,6 +345,30 @@ See `test/graph.test.js` for dry graph logic tests (no rendering, just node plum
 - `glUV` is raw texture coordinates. Use for texture lookups, sampling, etc.
 
 ---
+
+## Target Flexibility
+
+miniGL can work with various HTML elements:
+
+```js
+// Canvas element
+const gl = new miniGL('canvas');
+
+// Any div/container
+const gl = new miniGL('#container');
+
+// Replace an image with interactive content
+const gl = new miniGL('img'); // Automatically loads the image as a texture
+
+// Replace a video with processed version
+const gl = new miniGL('video'); // Automatically loads the video as a texture
+
+// Fullscreen (no target)
+const gl = new miniGL(); // Creates fullscreen overlay
+```
+
+---
+
 MIT License
 
 Made w/ love for Shopify, 2025
