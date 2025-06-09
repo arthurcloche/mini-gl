@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lens Distortion Test - Factory Pattern</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: monospace;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        canvas {
+            border: 1px solid #333;
+            background: black;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 250px;
+        }
+        
+        .control {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+        }
+        
+        .value {
+            font-size: 11px;
+            color: #888;
+        }
+        
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #4a9eff;
+        }
+        
+        .info {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <div class="controls">
+        <h2>Lens Distortion Controls</h2>
+        
+        <div class="control">
+            <label>Intensity</label>
+            <input type="range" id="intensity" min="0" max="2" step="0.1" value="1.0">
+            <div class="value" id="intensityValue">1.0</div>
+        </div>
+        
+        <div class="control">
+            <label>Radius</label>
+            <input type="range" id="radius" min="0.1" max="2" step="0.1" value="0.8">
+            <div class="value" id="radiusValue">0.8</div>
+        </div>
+        
+        <div class="control">
+            <label>Distortion</label>
+            <input type="range" id="distortion" min="1" max="20" step="0.5" value="10">
+            <div class="value" id="distortionValue">10</div>
+        </div>
+        
+        <div class="control">
+            <label>Dispersion</label>
+            <input type="range" id="dispersion" min="0" max="2" step="0.05" value="0.95">
+            <div class="value" id="dispersionValue">0.95</div>
+        </div>
+        
+        <div class="control">
+            <label>
+                <input type="checkbox" id="mouseFollow"> Follow Mouse
+            </label>
+        </div>
+        
+        <div class="info">
+            <strong>Factory Pattern Test</strong><br>
+            This demo tests our new factory pattern:<br>
+            • Text drawn with canvas2D node<br>
+            • Lens distortion using factory function<br>
+            • Real-time parameter updates<br>
+            • Mouse tracking support
+        </div>
+    </div>
+
+    <script type="module">
+        import miniGL from '../lib/miniGL/miniGL.js';
+        import { LenseDistortionNode } from '../lib/miniGL/miniNodes/effects/lenseDistortionNode.js';
+
+        // Initialize miniGL
+        const gl = new miniGL('canvas');
+        await gl.ready();
+
+        // Create text canvas node
+        const textNode = gl.canvas2D((ctx, width, height) => {
+            // Clear with a subtle gradient background
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, '#2a3a5a');
+            gradient.addColorStop(1, '#1a2040');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw main text
+            ctx.font = 'bold 64px Arial';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('LENS DISTORTION', width/2, height/2 - 50);
+            
+            // Draw subtitle
+            ctx.font = '24px Arial';
+            ctx.fillStyle = '#4a9eff';
+            ctx.fillText('Factory Pattern Test', width/2, height/2 + 20);
+            
+            // Draw some decorative elements
+            ctx.strokeStyle = '#4a9eff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(width/4, height/4, 30, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(3*width/4, 3*height/4, 40, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Draw some grid lines for visual reference
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            for(let i = 0; i < width; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, height);
+                ctx.stroke();
+            }
+            for(let i = 0; i < height; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(width, i);
+                ctx.stroke();
+            }
+        }, {
+            name: "Text Canvas"
+        });
+
+        // Create lens distortion node using factory pattern
+        let lensNode = LenseDistortionNode(gl, {
+            intensity: 1.0,
+            radius: 0.8,
+            distortion: 10.0,
+            dispersion: 0.95,
+            position: [0.5, 0.5]
+        }, {
+            name: "Lens Distortion Effect",
+            format: "FLOAT"
+        });
+
+        // Connect text to lens distortion
+        lensNode.connect('glTexture', textNode);
+        
+        // Set as output
+        gl.setOutput(lensNode);
+
+        // Control handlers
+        const controls = {
+            intensity: document.getElementById('intensity'),
+            radius: document.getElementById('radius'),
+            distortion: document.getElementById('distortion'),
+            dispersion: document.getElementById('dispersion'),
+            mouseFollow: document.getElementById('mouseFollow')
+        };
+
+        const valueDisplays = {
+            intensity: document.getElementById('intensityValue'),
+            radius: document.getElementById('radiusValue'),
+            distortion: document.getElementById('distortionValue'),
+            dispersion: document.getElementById('dispersionValue')
+        };
+
+        // Update control values and apply to lens node
+        function updateControl(name, value) {
+            valueDisplays[name].textContent = value;
+            lensNode.updateUniform(name, parseFloat(value));
+        }
+
+        // Set up control listeners
+        Object.keys(controls).forEach(name => {
+            if (name === 'mouseFollow') {
+                controls[name].addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        lensNode.updateUniform('position', 'mouse');
+                    } else {
+                        lensNode.updateUniform('position', [0.5, 0.5]);
+                    }
+                });
+            } else {
+                controls[name].addEventListener('input', (e) => {
+                    updateControl(name, e.target.value);
+                });
+                
+                // Initialize display values
+                updateControl(name, controls[name].value);
+            }
+        });
+
+        // Start render loop
+        function animate() {
+            gl.render();
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Log success
+        console.log('🎉 Lens Distortion Factory Pattern Test Running!');
+        console.log('✓ Text canvas created');
+        console.log('✓ Lens distortion node created with factory pattern');
+        console.log('✓ Real-time controls working');
+        console.log('✓ Mouse tracking available');
+    </script>
+</body>
+</html> 

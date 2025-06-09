@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Particle Simulations</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #000;
+      color: #fff;
+      font-family: monospace;
+    }
+    
+    canvas {
+      border: 1px solid #333;
+      display: block;
+      margin: 20px 0;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .control label {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    input[type="range"] {
+      width: 120px;
+    }
+    
+    button {
+      background: #333;
+      color: #fff;
+      border: 1px solid #666;
+      padding: 8px 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background: #444;
+    }
+    
+    button.active {
+      background: #555;
+      border-color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌸 Flower Trail with Lens Distortion</h1>
+  <p>Particle trail effect with per-particle hue shifting and lens distortion post-processing</p>
+  
+  <canvas id="particles" width="800" height="600"></canvas>
+  
+  <div class="controls">
+    <div class="control">
+      <label>Gravity</label>
+      <input type="range" id="gravity" min="0" max="0.002" step="0.0001" value="0.0005">
+    </div>
+    <div class="control">
+      <label>Particle Count</label>
+      <input type="range" id="count" min="500" max="3000" step="100" value="1500">
+    </div>
+    <div class="control">
+      <label>Spawn Rate</label>
+      <input type="range" id="spawnRate" min="0.01" max="0.1" step="0.01" value="0.03">
+    </div>
+    <div class="control">
+      <label>Lens Distortion</label>
+      <input type="range" id="distortion" min="0" max="2" step="0.1" value="0.5">
+    </div>
+    <div class="control">
+      <label>Blur Type</label>
+      <button id="blurGaussian" class="active">Gaussian</button>
+      <button id="blurDirectional">Directional</button>
+    </div>
+    <div class="control">
+      <label>Blur Radius</label>
+      <input type="range" id="blurRadius" min="0" max="5" step="0.1" value="1.0">
+    </div>
+  </div>
+
+  <script type="module">
+    import miniGL from '../lib/miniGL/miniGL.js';
+    import LenseDistortionNode from '../lib/miniGL/miniNodes/effects/lenseDistortionNode.js'
+    import GaussianBlurNode, { DirectionalBlurNode } from '../lib/miniGL/miniNodes/effects/gaussianBlurNode.js';
+
+    const minigl = new miniGL('#particles');
+    let particles = null;
+    let flowerParticles = null;
+    let lenseDistortion = null;
+    let currentBlur = null;
+    
+    // Create a flower sprite
+    const flowerSprite = minigl.canvas2D((ctx, width, height) => {
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const size = Math.min(width, height) * 0.4;
+      
+      ctx.clearRect(0, 0, width, height);
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      
+      // 6 petals
+      for (let i = 0; i < 6; i++) {
+        ctx.save();
+        ctx.rotate((i * Math.PI) / 3);
+        
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.6);
+        gradient.addColorStop(0, '#ff6b9d');
+        gradient.addColorStop(0.5, '#ff8cc8');
+        gradient.addColorStop(1, 'rgba(255, 107, 157, 0)');
+        
+        ctx.fillStyle = '#ff6b9d';
+        ctx.beginPath();
+        ctx.ellipse(0, -size * 0.3, size * 0.3, size * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+      }
+      
+      // Flower center
+      const centerGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.2);
+      centerGradient.addColorStop(0, '#ffd93d');
+      centerGradient.addColorStop(1, '#ff8c42');
+      
+      ctx.fillStyle = '#ffd93d';
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
+    }, { width: 64, height: 64 });
+
+    // Setup the particle system and rendering chain
+
+    function setup() {
+      // Create particles with built-in simulation
+      particles = minigl.particles({
+        count: parseInt(document.getElementById('count').value),
+        size: 0.008,
+        gravity: parseFloat(document.getElementById('gravity').value),
+        damping: 0.95,
+        spawnRate: parseFloat(document.getElementById('spawnRate').value),
+      });
+      
+      // Create flower rendering with per-particle hue shifting
+      flowerParticles = particles.particle(`#version 300 es
+        precision highp float;
+        
+        in vec2 particleUV;
+        in vec4 particleColor;
+        in vec2 particleVel;
+        in float particleLife;
+        in float particleID;
+        in float quadVertexID;
+        
+        uniform sampler2D uFlower;
+        uniform float glTime;
+        
+        out vec4 fragColor;
+        
+        mat2 rotate(float angle) {
+          float c = cos(angle);
+          float s = sin(angle);
+          return mat2(c, -s, s, c);
+        }
+        
+        void main() {
+          if (particleLife < 0.5) discard;
+          
+          float speed = length(particleVel);
+          float velocityAngle = atan(particleVel.y, particleVel.x);
+          float timeRotation = glTime * 0.2;
+          float totalRotation = velocityAngle + timeRotation;
+          
+          float speedScale = 1.0 + speed * 1.0;
+          
+          vec2 centeredUV = particleUV - 0.5;
+          vec2 rotatedUV = rotate(totalRotation) * centeredUV;
+          vec2 scaledUV = rotatedUV / speedScale;
+          vec2 finalUV = scaledUV + 0.5;
+          
+          vec4 flowerColor = texture(uFlower, finalUV);
+          
+          // Shadow
+          vec2 shadowUV = finalUV + vec2(0.05, -0.05);
+          vec4 shadowSample = texture(uFlower, shadowUV);
+          vec3 shadowColor = vec3(0.0);
+          float shadowMask = shadowSample.a * 0.3;
+          
+          vec3 finalColor = mix(shadowColor, flowerColor.rgb, flowerColor.a);
+          float finalAlpha = max(shadowMask * (1.0 - flowerColor.a), flowerColor.a);
+          
+          // Per-particle hue shifting
+          float hueShift = particleID * 0.1 + glTime * 0.1;
+          vec3 shiftedColor = vec3(
+            finalColor.r * cos(hueShift) - finalColor.g * sin(hueShift),
+            finalColor.r * sin(hueShift) + finalColor.g * cos(hueShift),
+            finalColor.b
+          );
+          finalColor = shiftedColor;
+          finalColor *= particleColor.rgb;
+          finalAlpha *= particleColor.a;
+          
+          fragColor = vec4(finalColor, finalAlpha);
+        }
+      `, {}, {
+        quadSize: 0.1
+      });
+      
+      // Add blur effect (default to Gaussian)
+      currentBlur = GaussianBlurNode(minigl, {
+        radius: parseFloat(document.getElementById('blurRadius').value)
+      });
+
+      // Add lens distortion effect  
+      lenseDistortion = LenseDistortionNode(minigl, {
+        distortion: 10.,
+        intensity: 1.0,
+        radius: 0.8
+      });
+      
+      // Connect the rendering chain: flower sprite -> particles -> blur -> lens distortion -> output
+      minigl.connect(flowerSprite, flowerParticles, 'uFlower');
+      minigl.connect(flowerParticles, currentBlur, 'uTexture');
+      minigl.connect(currentBlur, lenseDistortion, 'uTexture');
+      minigl.connect(flowerParticles, lenseDistortion, 'uMasked');
+      minigl.output(lenseDistortion);
+    }
+
+    // Setup initial effect
+    setup();
+
+    // Controls
+    document.getElementById('gravity').addEventListener('input', (e) => {
+      if (particles) particles.updateUniform('gravity', parseFloat(e.target.value));
+    });
+
+    document.getElementById('count').addEventListener('input', (e) => {
+      setup(); // Recreate with new count
+    });
+
+    document.getElementById('spawnRate').addEventListener('input', (e) => {
+      if (particles) particles.updateUniform('spawnRate', parseFloat(e.target.value));
+    });
+
+    document.getElementById('distortion').addEventListener('input', (e) => {
+      if (lenseDistortion) lenseDistortion.updateUniform('distortion', parseFloat(e.target.value));
+    });
+
+    document.getElementById('blurRadius').addEventListener('input', (e) => {
+      if (currentBlur) currentBlur.updateUniform('radius', parseFloat(e.target.value));
+    });
+
+    // Blur type switching
+    document.getElementById('blurGaussian').addEventListener('click', () => {
+      switchBlurType('gaussian');
+    });
+
+    document.getElementById('blurDirectional').addEventListener('click', () => {
+      switchBlurType('directional');
+    });
+
+    function switchBlurType(type) {
+      // Update button states
+      document.getElementById('blurGaussian').classList.toggle('active', type === 'gaussian');
+      document.getElementById('blurDirectional').classList.toggle('active', type === 'directional');
+
+      // Disconnect current blur
+      if (currentBlur) {
+        lenseDistortion.disconnect('uTexture');
+        currentBlur.disconnect('uTexture');
+      }
+
+      // Create new blur based on type
+      const radius = parseFloat(document.getElementById('blurRadius').value);
+      if (type === 'gaussian') {
+        currentBlur = GaussianBlurNode(minigl, { radius });
+      } else {
+        currentBlur = DirectionalBlurNode(minigl, { 
+          radius,
+          direction: [1.0, 0.5] // Diagonal direction for visual effect
+        });
+      }
+
+      // Reconnect the chain
+      minigl.connect(flowerParticles, currentBlur, 'uTexture');
+      minigl.connect(currentBlur, lenseDistortion, 'uTexture');
+    }
+
+    function animate() {
+      minigl.render();
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html> 
