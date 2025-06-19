@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>miniGL FPS Control Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #1a1a1a;
+      color: white;
+      font-family: monospace;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #00ff88;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .description {
+      background: #002233;
+      border: 1px solid #004466;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .canvas-container {
+      border: 1px solid #555;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .canvas-title {
+      background: #333;
+      color: #00ff88;
+      padding: 10px 15px;
+      margin: 0;
+      font-size: 14px;
+      border-bottom: 1px solid #555;
+    }
+
+    minigl-canvas {
+      width: 100%;
+      height: 250px;
+      display: block;
+    }
+
+    .controls {
+      background: #333;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    .control-group label {
+      display: inline-block;
+      width: 150px;
+      color: #00ff88;
+    }
+
+    .controls button {
+      background: #555;
+      color: white;
+      border: 1px solid #777;
+      padding: 8px 16px;
+      margin-right: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .controls button:hover {
+      background: #666;
+    }
+
+    .controls button.active {
+      background: #00ff88;
+      color: #000;
+    }
+
+    .performance-monitor {
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .fps-indicator {
+      font-size: 24px;
+      color: #00ff88;
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    .warning {
+      background: #332200;
+      border: 1px solid #664400;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>FPS Control Test</h1>
+    
+    <div class="description">
+      <strong>Purpose:</strong> Test miniGL's FPS limiting functionality across different refresh rates.
+      <br><br>
+      <strong>What to expect:</strong>
+      <ul>
+        <li><strong>60 FPS:</strong> Smooth animation locked to 60fps regardless of monitor refresh rate</li>
+        <li><strong>30 FPS:</strong> Visibly slower animation, half the speed of 60fps</li>
+        <li><strong>120 FPS:</strong> Smooth animation, potentially faster on high refresh monitors</li>
+        <li><strong>Unlimited:</strong> Runs at monitor refresh rate (60/120/144Hz etc.)</li>
+      </ul>
+      <strong>Note:</strong> On 60Hz monitors, 120fps and unlimited will appear the same.
+    </div>
+
+    <div id="webgl-check" class="warning" style="display: none;">
+      <strong>Warning:</strong> WebGL2 is not supported in your browser.
+    </div>
+
+    <!-- FPS Test Grid -->
+    <div class="test-grid">
+      <div class="canvas-container">
+        <h3 class="canvas-title">60 FPS (Default)</h3>
+        <minigl-canvas fps="60" debug>
+          <shader-node id="spinner60">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            uniform vec2 glResolution;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            
+            void main() {
+              vec2 center = vec2(0.5);
+              vec2 pos = glCoord - center;
+              
+              float angle = atan(pos.y, pos.x) + glTime * 0.1;
+              float radius = length(pos);
+              
+              // Create rotating segments
+              float segments = 8.0;
+              float segmentAngle = angle * segments / (2.0 * 3.14159);
+              float segment = floor(segmentAngle);
+              float brightness = mod(segment, 2.0);
+              
+              // Radial gradient
+              float mask = 1.0 - smoothstep(0.1, 0.4, radius);
+              
+              vec3 color = vec3(brightness) * mask;
+              color += vec3(0.1, 0.5, 1.0) * (1.0 - mask);
+              
+              fragColor = vec4(color, 1.0);
+            }
+          </shader-node>
+        </minigl-canvas>
+      </div>
+
+      <div class="canvas-container">
+        <h3 class="canvas-title">30 FPS (Slower)</h3>
+        <minigl-canvas fps="30" debug>
+          <shader-node id="spinner30">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            uniform vec2 glResolution;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            
+            void main() {
+              vec2 center = vec2(0.5);
+              vec2 pos = glCoord - center;
+              
+              float angle = atan(pos.y, pos.x) + glTime * 0.1;
+              float radius = length(pos);
+              
+              float segments = 8.0;
+              float segmentAngle = angle * segments / (2.0 * 3.14159);
+              float segment = floor(segmentAngle);
+              float brightness = mod(segment, 2.0);
+              
+              float mask = 1.0 - smoothstep(0.1, 0.4, radius);
+              
+              vec3 color = vec3(brightness) * mask;
+              color += vec3(1.0, 0.5, 0.1) * (1.0 - mask);
+              
+              fragColor = vec4(color, 1.0);
+            }
+          </shader-node>
+        </minigl-canvas>
+      </div>
+
+      <div class="canvas-container">
+        <h3 class="canvas-title">120 FPS (Faster)</h3>
+        <minigl-canvas fps="120" debug>
+          <shader-node id="spinner120">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            uniform vec2 glResolution;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            
+            void main() {
+              vec2 center = vec2(0.5);
+              vec2 pos = glCoord - center;
+              
+              float angle = atan(pos.y, pos.x) + glTime * 0.1;
+              float radius = length(pos);
+              
+              float segments = 8.0;
+              float segmentAngle = angle * segments / (2.0 * 3.14159);
+              float segment = floor(segmentAngle);
+              float brightness = mod(segment, 2.0);
+              
+              float mask = 1.0 - smoothstep(0.1, 0.4, radius);
+              
+              vec3 color = vec3(brightness) * mask;
+              color += vec3(0.5, 1.0, 0.1) * (1.0 - mask);
+              
+              fragColor = vec4(color, 1.0);
+            }
+          </shader-node>
+        </minigl-canvas>
+      </div>
+
+      <div class="canvas-container">
+        <h3 class="canvas-title">Unlimited FPS (Monitor Rate)</h3>
+        <minigl-canvas unlimited-fps debug>
+          <shader-node id="spinnerUnlimited">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            uniform vec2 glResolution;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            
+            void main() {
+              vec2 center = vec2(0.5);
+              vec2 pos = glCoord - center;
+              
+              float angle = atan(pos.y, pos.x) + glTime * 0.1;
+              float radius = length(pos);
+              
+              float segments = 8.0;
+              float segmentAngle = angle * segments / (2.0 * 3.14159);
+              float segment = floor(segmentAngle);
+              float brightness = mod(segment, 2.0);
+              
+              float mask = 1.0 - smoothstep(0.1, 0.4, radius);
+              
+              vec3 color = vec3(brightness) * mask;
+              color += vec3(1.0, 0.1, 0.5) * (1.0 - mask);
+              
+              fragColor = vec4(color, 1.0);
+            }
+          </shader-node>
+        </minigl-canvas>
+      </div>
+    </div>
+
+    <!-- Dynamic Control Test -->
+    <div class="canvas-container">
+      <h3 class="canvas-title">Dynamic FPS Control Test</h3>
+      <minigl-canvas id="dynamicCanvas" fps="60" debug style="height: 300px;">
+        <shader-node id="dynamicSpinner">
+          #version 300 es
+          precision highp float;
+          uniform float glTime;
+          uniform vec2 glResolution;
+          in vec2 glCoord;
+          out vec4 fragColor;
+          
+          void main() {
+            vec2 center = vec2(0.5);
+            vec2 pos = glCoord - center;
+            
+            float angle = atan(pos.y, pos.x) + glTime * 0.1;
+            float radius = length(pos);
+            
+            // Multi-layer spinner effect
+            float segments1 = 6.0;
+            float segments2 = 12.0;
+            
+            float angle1 = angle * segments1 / (2.0 * 3.14159);
+            float angle2 = angle * segments2 / (2.0 * 3.14159);
+            
+            float seg1 = mod(floor(angle1), 2.0);
+            float seg2 = mod(floor(angle2), 2.0);
+            
+            float mask1 = 1.0 - smoothstep(0.1, 0.25, radius);
+            float mask2 = smoothstep(0.25, 0.3, radius) - smoothstep(0.4, 0.45, radius);
+            
+            vec3 color1 = vec3(seg1, 0.5, 1.0 - seg1) * mask1;
+            vec3 color2 = vec3(1.0 - seg2, seg2, 0.5) * mask2;
+            
+            vec3 finalColor = color1 + color2;
+            fragColor = vec4(finalColor, 1.0);
+          }
+        </shader-node>
+      </minigl-canvas>
+    </div>
+
+    <!-- Performance Monitor -->
+    <div class="performance-monitor">
+      <div class="fps-indicator" id="fpsIndicator">Monitor Refresh Rate: <span id="refreshRate">Unknown</span></div>
+      <div>Your browser's estimated refresh rate and FPS limiting effectiveness.</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <h3 style="color: #00ff88; margin-top: 0;">Dynamic FPS Controls</h3>
+      <p>Change the FPS of the dynamic test canvas:</p>
+      
+      <div class="control-group">
+        <button onclick="setFps(30)" data-fps="30">30 FPS</button>
+        <button onclick="setFps(60)" data-fps="60" class="active">60 FPS</button>
+        <button onclick="setFps(90)" data-fps="90">90 FPS</button>
+        <button onclick="setFps(120)" data-fps="120">120 FPS</button>
+        <button onclick="setUnlimited()">Unlimited</button>
+      </div>
+
+      <div class="control-group">
+        <button onclick="pauseAll()">Pause All</button>
+        <button onclick="resumeAll()">Resume All</button>
+      </div>
+
+      <div class="control-group">
+        <label>Custom FPS:</label>
+        <input type="number" id="customFps" min="1" max="240" value="60" style="width: 80px; padding: 4px;">
+        <button onclick="setCustomFps()">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import miniGLComponents from '../lib/miniGL-components/index.js';
+
+    // Check WebGL2 support
+    if (!miniGLComponents.isWebGL2Supported()) {
+      document.getElementById('webgl-check').style.display = 'block';
+    }
+
+    // Estimate refresh rate
+    let frameCount = 0;
+    let startTime = performance.now();
+    
+    function countFrames() {
+      frameCount++;
+      const elapsed = performance.now() - startTime;
+      
+      if (elapsed >= 1000) { // After 1 second
+        const refreshRate = Math.round(frameCount * 1000 / elapsed);
+        document.getElementById('refreshRate').textContent = refreshRate + ' Hz';
+        return; // Stop counting
+      }
+      
+      requestAnimationFrame(countFrames);
+    }
+    
+    requestAnimationFrame(countFrames);
+
+    // FPS Control Functions
+    window.setFps = function(fps) {
+      const canvas = document.getElementById('dynamicCanvas');
+      canvas.setAttribute('fps', fps);
+      canvas.removeAttribute('unlimited-fps');
+      
+      // Update button states
+      document.querySelectorAll('.controls button[data-fps]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.fps === fps.toString());
+      });
+      document.querySelector('.controls button:not([data-fps])').classList.remove('active');
+    };
+
+    window.setUnlimited = function() {
+      const canvas = document.getElementById('dynamicCanvas');
+      canvas.setAttribute('unlimited-fps', '');
+      canvas.removeAttribute('fps');
+      
+      // Update button states
+      document.querySelectorAll('.controls button[data-fps]').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.querySelector('.controls button:not([data-fps])').classList.add('active');
+    };
+
+    window.setCustomFps = function() {
+      const fps = parseInt(document.getElementById('customFps').value) || 60;
+      setFps(fps);
+    };
+
+    window.pauseAll = function() {
+      document.querySelectorAll('minigl-canvas').forEach(canvas => {
+        canvas.setAttribute('auto-render', 'false');
+      });
+    };
+
+    window.resumeAll = function() {
+      document.querySelectorAll('minigl-canvas').forEach(canvas => {
+        canvas.setAttribute('auto-render', 'true');
+      });
+    };
+
+    // Event listeners
+    document.addEventListener('minigl-ready', (e) => {
+      console.log('Canvas ready:', e.target.getAttribute('fps') || 'unlimited', 'fps');
+    });
+
+    document.addEventListener('minigl-error', (e) => {
+      console.error('miniGL error:', e.detail);
+    });
+  </script>
+</body>
+</html> 

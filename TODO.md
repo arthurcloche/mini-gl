@@ -4,7 +4,8 @@
 [ ] Add 3D texture for gen envmap
 [x] Remove chunks dependencies 
 
-
+## Docs
+https://webglreport.com/?v=2
 
 ## Nodes
 [ ] Add FXAA to gl.output
@@ -18,7 +19,7 @@ Glossy : https://www.shadertoy.com/view/lX2GDR
 examples : https://github.com/fand/vfx-js
 
 noises  :https://github.com/hughsk/glsl-noise
-
+fluids : https://21st.dev/davidhzdev/splash-cursor/default
 halftone dithering : https://www.shadertoy.com/view/wdBGzR
 guilloche dithering : https://www.shadertoy.com/view/tsSSDc
 grain dithering : https://www.shadertoy.com/view/4tlyWs
@@ -44,3 +45,4 @@ https://github.com/regl-project/regl
 https://stack.gl/
 https://nodes.io/
 https://regl-project.github.io/regl/www/gallery.html
+https://github.com/google/swissgl

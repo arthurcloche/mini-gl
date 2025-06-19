@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>miniGL Web Components - Shader Composition Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #1a1a1a;
+      color: white;
+      font-family: monospace;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #00ff88;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .description {
+      background: #002233;
+      border: 1px solid #004466;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .test-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .canvas-container {
+      border: 1px solid #555;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .canvas-title {
+      background: #333;
+      color: #00ff88;
+      padding: 10px 15px;
+      margin: 0;
+      font-size: 14px;
+      border-bottom: 1px solid #555;
+    }
+
+    minigl-canvas {
+      width: 100%;
+      height: 300px;
+      display: block;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .individual-circles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .individual-circles minigl-canvas {
+      height: 200px;
+    }
+
+    .graph-explanation {
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    .controls {
+      background: #333;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    .controls button {
+      background: #555;
+      color: white;
+      border: 1px solid #777;
+      padding: 8px 16px;
+      margin-right: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .controls button:hover {
+      background: #666;
+    }
+
+    .controls input[type="range"] {
+      margin: 0 10px;
+      width: 100px;
+    }
+
+    .warning {
+      background: #332200;
+      border: 1px solid #664400;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Shader Composition Test</h1>
+    
+    <div class="description">
+      <strong>Test Scenario:</strong> This demonstrates complex shader composition using web components.
+      <br><br>
+      <strong>Pipeline:</strong>
+      <ol>
+        <li><strong>Shader A, B, C:</strong> Three separate shaders creating white circles at different positions</li>
+        <li><strong>Yellow Mixer:</strong> Combines A + B as red and green channels → Yellow circle</li>
+        <li><strong>Final Compositor:</strong> Adds C as blue channel to yellow → White circle</li>
+      </ol>
+      <strong>Expected Result:</strong> A single white circle (Red + Green + Blue = White)
+    </div>
+
+    <div id="webgl-check" class="warning" style="display: none;">
+      <strong>Warning:</strong> WebGL2 is not supported in your browser. The test will not work.
+    </div>
+
+    <!-- Individual Circle Previews -->
+    <h2 style="color: #00ff88; margin-bottom: 15px;">Step 1: Individual White Circles</h2>
+    <div class="individual-circles">
+      <div class="canvas-container">
+        <h3 class="canvas-title">Circle A (Left)</h3>
+        <minigl-canvas output="circleA">
+          <shader-node id="circleA">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            void main() {
+              vec2 center = vec2(0.3, 0.5);
+              float dist = length(glCoord - center);
+              float circle = smoothstep(0.12, 0.1, dist);
+              float pulse = 0.9 + 0.1 * sin(glTime * 0.05);
+              fragColor = vec4(vec3(circle * pulse), circle);
+            }
+          </shader-node>
+        </minigl-canvas>
+      </div>
+
+      <div class="canvas-container">
+        <h3 class="canvas-title">Circle B (Right)</h3>
+        <minigl-canvas output="circleB">
+          <shader-node id="circleB">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            void main() {
+              vec2 center = vec2(0.7, 0.5);
+              float dist = length(glCoord - center);
+              float circle = smoothstep(0.12, 0.1, dist);
+              float pulse = 0.9 + 0.1 * sin(glTime * 0.05 + 1.0);
+              fragColor = vec4(vec3(circle * pulse), circle);
+            }
+          </shader-node>
+        </minigl-canvas>
+      </div>
+
+      <div class="canvas-container">
+        <h3 class="canvas-title">Circle C (Center)</h3>
+        <minigl-canvas output="circleC">
+          <shader-node id="circleC">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            void main() {
+              vec2 center = vec2(0.5, 0.5);
+              float dist = length(glCoord - center);
+              float circle = smoothstep(0.12, 0.1, dist);
+              float pulse = 0.9 + 0.1 * sin(glTime * 0.05 + 2.0);
+              fragColor = vec4(vec3(circle * pulse), circle);
+            }
+          </shader-node>
+        </minigl-canvas>
+      </div>
+    </div>
+
+    <!-- Composition Steps -->
+    <h2 style="color: #00ff88; margin-bottom: 15px;">Step 2: Composition Pipeline</h2>
+    <div class="test-section">
+      <div class="canvas-container">
+        <h3 class="canvas-title">Yellow Mixer (A.r + B.g → Yellow)</h3>
+        <minigl-canvas output="yellowMixer" debug>
+          <!-- Source circles -->
+          <shader-node id="sourceA">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            void main() {
+              vec2 center = vec2(0.3, 0.5);
+              float dist = length(glCoord - center);
+              float circle = smoothstep(0.12, 0.1, dist);
+              float pulse = 0.9 + 0.1 * sin(glTime * 0.05);
+              fragColor = vec4(vec3(circle * pulse), circle);
+            }
+          </shader-node>
+
+          <shader-node id="sourceB">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            void main() {
+              vec2 center = vec2(0.7, 0.5);
+              float dist = length(glCoord - center);
+              float circle = smoothstep(0.12, 0.1, dist);
+              float pulse = 0.9 + 0.1 * sin(glTime * 0.05 + 1.0);
+              fragColor = vec4(vec3(circle * pulse), circle);
+            }
+          </shader-node>
+
+          <!-- Yellow mixer shader -->
+          <shader-node id="yellowMixer">
+            <input-connection name="texA" from="sourceA"></input-connection>
+            <input-connection name="texB" from="sourceB"></input-connection>
+            
+            #version 300 es
+            precision highp float;
+            uniform sampler2D texA;
+            uniform sampler2D texB;
+            in vec2 glUV;
+            out vec4 fragColor;
+            void main() {
+              vec4 colorA = texture(texA, glUV);
+              vec4 colorB = texture(texB, glUV);
+              
+              // Use A as red channel, B as green channel
+              // This creates yellow where both circles overlap
+              float red = colorA.r;
+              float green = colorB.r;
+              float alpha = max(colorA.a, colorB.a);
+              
+              fragColor = vec4(red, green, 0.0, alpha);
+            }
+          </shader-node>
+        </minigl-canvas>
+      </div>
+
+      <div class="canvas-container">
+        <h3 class="canvas-title">Final Result (Yellow + C.b → White)</h3>
+        <minigl-canvas output="finalResult" debug>
+          <!-- All source circles -->
+          <shader-node id="finalA">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            void main() {
+              vec2 center = vec2(0.3, 0.5);
+              float dist = length(glCoord - center);
+              float circle = smoothstep(0.12, 0.1, dist);
+              float pulse = 0.9 + 0.1 * sin(glTime * 0.05);
+              fragColor = vec4(vec3(circle * pulse), circle);
+            }
+          </shader-node>
+
+          <shader-node id="finalB">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            void main() {
+              vec2 center = vec2(0.7, 0.5);
+              float dist = length(glCoord - center);
+              float circle = smoothstep(0.12, 0.1, dist);
+              float pulse = 0.9 + 0.1 * sin(glTime * 0.05 + 1.0);
+              fragColor = vec4(vec3(circle * pulse), circle);
+            }
+          </shader-node>
+
+          <shader-node id="finalC">
+            #version 300 es
+            precision highp float;
+            uniform float glTime;
+            in vec2 glCoord;
+            out vec4 fragColor;
+            void main() {
+              vec2 center = vec2(0.5, 0.5);
+              float dist = length(glCoord - center);
+              float circle = smoothstep(0.12, 0.1, dist);
+              float pulse = 0.9 + 0.1 * sin(glTime * 0.05 + 2.0);
+              fragColor = vec4(vec3(circle * pulse), circle);
+            }
+          </shader-node>
+
+          <!-- Yellow mixer (same as above) -->
+          <shader-node id="yellowStep">
+            <input-connection name="texA" from="finalA"></input-connection>
+            <input-connection name="texB" from="finalB"></input-connection>
+            
+            #version 300 es
+            precision highp float;
+            uniform sampler2D texA;
+            uniform sampler2D texB;
+            in vec2 glUV;
+            out vec4 fragColor;
+            void main() {
+              vec4 colorA = texture(texA, glUV);
+              vec4 colorB = texture(texB, glUV);
+              
+              float red = colorA.r;
+              float green = colorB.r;
+              float alpha = max(colorA.a, colorB.a);
+              
+              fragColor = vec4(red, green, 0.0, alpha);
+            }
+          </shader-node>
+
+          <!-- Final compositor - adds blue channel -->
+          <shader-node id="finalResult">
+            <input-connection name="yellowTex" from="yellowStep"></input-connection>
+            <input-connection name="blueTex" from="finalC"></input-connection>
+            
+            #version 300 es
+            precision highp float;
+            uniform sampler2D yellowTex;
+            uniform sampler2D blueTex;
+            in vec2 glUV;
+            out vec4 fragColor;
+            void main() {
+              vec4 yellow = texture(yellowTex, glUV);
+              vec4 blue = texture(blueTex, glUV);
+              
+              // Combine: Yellow (RG) + Blue as B channel = White (RGB)
+              float red = yellow.r;
+              float green = yellow.g;
+              float blueChannel = blue.r; // Use the white circle as blue
+              float alpha = max(yellow.a, blue.a);
+              
+              fragColor = vec4(red, green, blueChannel, alpha);
+            }
+          </shader-node>
+        </minigl-canvas>
+      </div>
+    </div>
+
+    <!-- Large Final Result -->
+    <div class="canvas-container full-width">
+      <h3 class="canvas-title">Final Result - Large View (Should be White Circle)</h3>
+      <minigl-canvas output="largeResult" debug style="height: 400px;">
+        <!-- Recreate the entire pipeline in one canvas -->
+        <shader-node id="largeA">
+          #version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glCoord;
+          out vec4 fragColor;
+          void main() {
+            vec2 center = vec2(0.3, 0.5);
+            float dist = length(glCoord - center);
+            float circle = smoothstep(0.15, 0.12, dist);
+            float pulse = 0.9 + 0.1 * sin(glTime * 0.05);
+            fragColor = vec4(vec3(circle * pulse), circle);
+          }
+        </shader-node>
+
+        <shader-node id="largeB">
+          #version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glCoord;
+          out vec4 fragColor;
+          void main() {
+            vec2 center = vec2(0.7, 0.5);
+            float dist = length(glCoord - center);
+            float circle = smoothstep(0.15, 0.12, dist);
+            float pulse = 0.9 + 0.1 * sin(glTime * 0.05 + 1.0);
+            fragColor = vec4(vec3(circle * pulse), circle);
+          }
+        </shader-node>
+
+        <shader-node id="largeC">
+          #version 300 es
+          precision highp float;
+          uniform float glTime;
+          in vec2 glCoord;
+          out vec4 fragColor;
+          void main() {
+            vec2 center = vec2(0.5, 0.5);
+            float dist = length(glCoord - center);
+            float circle = smoothstep(0.15, 0.12, dist);
+            float pulse = 0.9 + 0.1 * sin(glTime * 0.05 + 2.0);
+            fragColor = vec4(vec3(circle * pulse), circle);
+          }
+        </shader-node>
+
+        <shader-node id="largeYellow">
+          <input-connection name="texA" from="largeA"></input-connection>
+          <input-connection name="texB" from="largeB"></input-connection>
+          
+          #version 300 es
+          precision highp float;
+          uniform sampler2D texA;
+          uniform sampler2D texB;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 colorA = texture(texA, glUV);
+            vec4 colorB = texture(texB, glUV);
+            
+            float red = colorA.r;
+            float green = colorB.r;
+            float alpha = max(colorA.a, colorB.a);
+            
+            fragColor = vec4(red, green, 0.0, alpha);
+          }
+        </shader-node>
+
+        <shader-node id="largeResult">
+          <input-connection name="yellowTex" from="largeYellow"></input-connection>
+          <input-connection name="blueTex" from="largeC"></input-connection>
+          
+          #version 300 es
+          precision highp float;
+          uniform sampler2D yellowTex;
+          uniform sampler2D blueTex;
+          in vec2 glUV;
+          out vec4 fragColor;
+          void main() {
+            vec4 yellow = texture(yellowTex, glUV);
+            vec4 blue = texture(blueTex, glUV);
+            
+            float red = yellow.r;
+            float green = yellow.g;
+            float blueChannel = blue.r;
+            float alpha = max(yellow.a, blue.a);
+            
+            fragColor = vec4(red, green, blueChannel, alpha);
+          }
+        </shader-node>
+      </minigl-canvas>
+    </div>
+
+    <div class="graph-explanation">
+      <strong>Node Graph Structure:</strong><br>
+      <pre>
+┌─────────┐    ┌─────────┐    ┌─────────┐
+│Circle A │    │Circle B │    │Circle C │
+│(White)  │    │(White)  │    │(White)  │
+└────┬────┘    └────┬────┘    └────┬────┘
+     │              │              │
+     └──────┬───────┘              │
+            │                      │
+     ┌──────▼──────┐               │
+     │Yellow Mixer │               │
+     │(A.r + B.g)  │               │
+     └──────┬──────┘               │
+            │                      │
+            └──────┬─────────────────┘
+                   │
+            ┌──────▼──────┐
+            │Final Result │
+            │(RG + C.b)   │
+            └─────────────┘
+                   │
+              ┌────▼────┐
+              │  WHITE  │
+              │ CIRCLE  │
+              └─────────┘
+      </pre>
+    </div>
+
+    <div class="controls">
+      <strong>Test Controls:</strong>
+      <button onclick="pauseAll()">Pause Animation</button>
+      <button onclick="resumeAll()">Resume Animation</button>
+      <button onclick="showIndividual()">Show Individual Circles</button>
+      <button onclick="showComposite()">Show Composite Only</button>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import the web components
+    import miniGLComponents from '../lib/miniGL-components/index.js';
+
+    // Check WebGL2 support
+    if (!miniGLComponents.isWebGL2Supported()) {
+      document.getElementById('webgl-check').style.display = 'block';
+    }
+
+    // Test control functions
+    window.pauseAll = function() {
+      document.querySelectorAll('minigl-canvas').forEach(canvas => {
+        canvas.setAttribute('auto-render', 'false');
+      });
+    };
+
+    window.resumeAll = function() {
+      document.querySelectorAll('minigl-canvas').forEach(canvas => {
+        canvas.setAttribute('auto-render', 'true');
+      });
+    };
+
+    window.showIndividual = function() {
+      document.querySelector('.individual-circles').style.display = 'grid';
+    };
+
+    window.showComposite = function() {
+      document.querySelector('.individual-circles').style.display = 'none';
+    };
+
+    // Add readiness logging
+    document.addEventListener('minigl-ready', (e) => {
+      console.log('Canvas ready:', e.target, 'Nodes:', e.detail.nodeCount);
+    });
+
+    document.addEventListener('minigl-error', (e) => {
+      console.error('miniGL error:', e.detail);
+    });
+
+    document.addEventListener('minigl-node-error', (e) => {
+      console.error('Node error:', e.detail);
+    });
+  </script>
+</body>
+</html> 
