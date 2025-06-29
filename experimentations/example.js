@@ -24,38 +24,39 @@ import miniGL from "../lib/miniGL/miniGL.js";
 
 // Initialize miniGL - use "#video" to target the video element
 const gl = new miniGL("#video");
-const loaderNode = gl.loaderNode();
+// const loaderNode = gl.loaderNode();
 
-console.log("Loader node:", loaderNode);
+// console.log("Loader node:", loaderNode);
+
+const videoNode = gl.video(
+  "https://cdn.shopify.com/videos/c/o/v/61c02cdf1fba42d18b0cf577a3733895.mp4",
+  {
+    name: "Manual Video",
+  }
+);
 
 const test = gl.shader(`#version 300 es
   precision highp float;
   uniform float glTime;
-  // uniform sampler2D uTexture;
+  uniform sampler2D uTexture;
   in vec2 glUV;
   out vec4 fragColor;
   void main() {
     vec2 center = vec2(0.5);
     float dist = distance(glUV, center);
     float ripple = sin(dist * 20.0 - glTime * 0.01) * 0.5 + 0.5;
-    // vec4 tex = texture(uTexture, glUV);
-    fragColor = vec4(ripple * 0.3, glUV.x * 0.2, glUV.y * 0.2, 1.0);
+    vec4 tex = texture(uTexture, glUV);
+    fragColor = tex; //vec4(ripple * 0.3, glUV.x * 0.2, glUV.y * 0.2, 1.0);
   }
 `);
 
 // Use the video loader node if available, otherwise create a video node manually
 // if (loaderNode) {
-//   gl.connect(loaderNode, test, "uTexture");
+gl.connect(videoNode, test, "uTexture");
 //   console.log("Using loader node for video");
 // } else {
 //   console.log("No loader node - creating video node manually");
-//   const videoNode = gl.video(
-//     "https://cdn.shopify.com/videos/c/o/v/61c02cdf1fba42d18b0cf577a3733895.mp4",
-//     {
-//       name: "Manual Video",
-//     }
-//   );
-//   gl.connect(videoNode, test, "uTexture");
+//
 // }
 
 gl.output(test);
