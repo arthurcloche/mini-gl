@@ -80,7 +80,7 @@ function animate() {
   timeline.update(gl.clock);
 
   // Render the frame
-  gl.render();
+  gl._render();
   requestAnimationFrame(animate);
 }
 

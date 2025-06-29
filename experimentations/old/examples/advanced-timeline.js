@@ -136,7 +136,7 @@ function animate() {
   timeline.update(currentFrame);
 
   // Render frame
-  gl.render();
+  gl._render();
   currentFrame++;
 
   requestAnimationFrame(animate);

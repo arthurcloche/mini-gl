@@ -128,7 +128,7 @@ import miniGL from "./lib/miniGL.js";
   );
   gl.output(visualizePass);
   const render = () => {
-    gl.render();
+    gl._render();
     requestAnimationFrame(render);
   };
   render();

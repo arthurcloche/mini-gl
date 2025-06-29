@@ -781,9 +781,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     applySplatInputs();
     step(dt);
-    minigl.render(); // Renders the displayNode
+    minigl._render(); // Renders the displayNode
   }
 
   console.log("Setup complete. Waiting for interaction to start simulation.");
-  minigl.render(); // Render initial state (cleared FBOs, background)
+  minigl._render(); // Render initial state (cleared FBOs, background)
 });

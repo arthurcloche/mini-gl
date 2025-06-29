@@ -47,7 +47,7 @@ async function init() {
   gl.output(sphereNode);
 
   function animate() {
-    gl.render();
+    gl._render();
     requestAnimationFrame(animate);
   }
 

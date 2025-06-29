@@ -22,37 +22,37 @@ import miniGL from "../lib/miniGL/miniGL.js";
   </div>
 */
 
-// Initialize miniGL - use "#video" to target the video element
-const gl = new miniGL("#video");
+// Initialize miniGL with custom FPS (default is 60)
+const gl = new miniGL({ fps: 60 });
 // const loaderNode = gl.loaderNode();
 
 // console.log("Loader node:", loaderNode);
 
-const videoNode = gl.video(
-  "https://cdn.shopify.com/videos/c/o/v/61c02cdf1fba42d18b0cf577a3733895.mp4",
-  {
-    name: "Manual Video",
-  }
-);
+// const videoNode = gl.video(
+//   "https://cdn.shopify.com/videos/c/o/v/61c02cdf1fba42d18b0cf577a3733895.mp4",
+//   {
+//     name: "Manual Video",
+//   }
+// );
 
 const test = gl.shader(`#version 300 es
   precision highp float;
   uniform float glTime;
-  uniform sampler2D uTexture;
+  //uniform sampler2D uTexture;
   in vec2 glUV;
   out vec4 fragColor;
   void main() {
     vec2 center = vec2(0.5);
     float dist = distance(glUV, center);
     float ripple = sin(dist * 20.0 - glTime * 0.01) * 0.5 + 0.5;
-    vec4 tex = texture(uTexture, glUV);
-    fragColor = tex; //vec4(ripple * 0.3, glUV.x * 0.2, glUV.y * 0.2, 1.0);
+    //vec4 tex = texture(uTexture, glUV);
+    fragColor = vec4(vec3(glUV,1.),1.); //vec4(ripple * 0.3, glUV.x * 0.2, glUV.y * 0.2, 1.0);
   }
 `);
 
 // Use the video loader node if available, otherwise create a video node manually
 // if (loaderNode) {
-gl.connect(videoNode, test, "uTexture");
+//gl.connect(videoNode, test, "uTexture");
 //   console.log("Using loader node for video");
 // } else {
 //   console.log("No loader node - creating video node manually");
@@ -61,11 +61,8 @@ gl.connect(videoNode, test, "uTexture");
 
 gl.output(test);
 
-const animate = () => {
-  gl.render();
-  window.requestAnimationFrame(animate);
-};
-animate();
+// New clean API - starts FPS-limited render loop at 60fps
+gl.render();
 
 /*
 
@@ -228,7 +225,7 @@ const colorNode = gl.shader(colorEffectShader, {
 // gl.connect(flowmapNode, colorNode, "uFlowmap");
 // gl.output(flowmapNode);
 
-// Animation loop
+// Animation loop with update callback
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
@@ -237,7 +234,8 @@ function len(x, y) {
   return x * x + y * y > epsilon;
 }
 
-function animate() {
+// Example with update callback for uniforms
+gl.render((time) => {
   const vellen = len(gl.mouseVelocity.x, gl.mouseVelocity.y);
 
   const velx = lerp(
@@ -251,23 +249,32 @@ function animate() {
     vellen > 0 ? 0.9 : 0.2
   );
   flowmapNode.updateUniform("uVelocity", [velx, vely]);
-  gl.render();
-  requestAnimationFrame(animate);
-}
+});
 
-// Start the animation
-animate();
-
-// Info about available node types
+// Info about available node types and new render API
 console.log(`
 miniGL Node API - Available methods:
 
 // Create nodes
 const shaderNode = gl.shader(fragmentShaderSource, options);
-const feedbackNode = gl.ping(fragmentShaderSource, options);
+const feedbackNode = gl.pingpong(fragmentShaderSource, options);
 const imageNode = gl.image(url, options);
-const canvasNode = gl.canvas(drawCallback, options);
+const canvasNode = gl.canvas2D(drawCallback, options);
 const blendNode = gl.blend({ blendMode: "screen", opacity: 0.8 });
+
+// New Render API (FPS-limited, no external requestAnimationFrame needed)
+gl.render();                    // Start 60fps render loop
+gl.render((time) => {           // With update callback for uniforms
+  node.updateUniform("uTime", time * 0.001);
+});
+
+const gl60 = new miniGL({ fps: 60 });   // 60fps (default)
+const gl120 = new miniGL({ fps: 120 }); // 120fps for high refresh displays
+const gl30 = new miniGL({ fps: 30 });   // 30fps for battery saving
+
+gl.stop();                      // Stop the render loop
+gl.setFps(90);                 // Change FPS on the fly
+gl.isRunning();                // Check if render loop is active
 
 // Use shader snippets with tag syntax
 const shader = gl.shader(\`
