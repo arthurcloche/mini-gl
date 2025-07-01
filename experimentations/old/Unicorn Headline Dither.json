@@ -1,0 +1,367 @@
+{
+  "history": [
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "layerType": "effect",
+      "type": "gradient",
+      "usesPingPong": false,
+      "speed": 0.25,
+      "trackMouse": 0,
+      "mouseMomentum": 0,
+      "animating": false,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision highp float;in vec2 vTextureCoord;uniform vec2 uMousePos; vec3 getColor(int index) { switch(index) { case 0: return vec3(0, 0, 0); case 1: return vec3(0, 0, 0); case 2: return vec3(0, 0, 0); case 3: return vec3(0, 0, 0); case 4: return vec3(0, 0, 0); case 5: return vec3(0, 0, 0); case 6: return vec3(0, 0, 0); case 7: return vec3(0, 0, 0); case 8: return vec3(0, 0, 0); case 9: return vec3(0, 0, 0); case 10: return vec3(0, 0, 0); case 11: return vec3(0, 0, 0); case 12: return vec3(0, 0, 0); case 13: return vec3(0, 0, 0); case 14: return vec3(0, 0, 0); case 15: return vec3(0, 0, 0); default: return vec3(0.0); } }const float PI = 3.14159265;vec2 rotate(vec2 coord, float angle) { float s = sin(angle); float c = cos(angle); return vec2( coord.x * c - coord.y * s, coord.x * s + coord.y * c ); }out vec4 fragColor;vec3 getColor(vec2 uv) {return vec3(0, 0, 0); }void main() {vec2 uv = vTextureCoord; vec2 pos = vec2(0.5005050505050505, 0.5) + mix(vec2(0), (uMousePos-0.5), 0.0000); uv -= pos; uv /= (0.5000*2.); uv = rotate(uv, (0.0000 - 0.5) * 2. * PI); vec4 color = vec4(getColor(uv), 1.); fragColor = color; }"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;uniform mat4 uMVMatrix; uniform mat4 uPMatrix;out vec2 vTextureCoord; out vec3 vVertexPosition;void main() { gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); vTextureCoord = aTextureCoord; }"
+      ],
+      "data": {
+        "downSample": 0.5,
+        "depth": false,
+        "uniforms": {}
+      }
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "locked": false,
+      "aspectRatio": 1,
+      "layerName": "Headline",
+      "userDownsample": 1,
+      "isElement": true,
+      "opacity": 1,
+      "effects": [],
+      "displace": 0,
+      "trackMouse": 0.08,
+      "anchorPoint": "center",
+      "mouseMomentum": 1,
+      "blendMode": "NORMAL",
+      "bgDisplace": 0,
+      "mask": 0,
+      "maskBackground": {
+        "type": "Vec3",
+        "_x": 0,
+        "_y": 0,
+        "_z": 0
+      },
+      "maskAlpha": 0,
+      "maskDepth": 0,
+      "dispersion": 0,
+      "axisTilt": 0.46,
+      "states": {
+        "appear": [],
+        "scroll": [],
+        "hover": []
+      },
+      "layerType": "text",
+      "justCreated": false,
+      "isSafari": false,
+      "width": 906,
+      "widthMode": "fixed",
+      "height": 77,
+      "heightMode": "fixed",
+      "left": 0.5,
+      "leftMode": "relative",
+      "top": 0.5,
+      "topMode": "relative",
+      "rotation": 0,
+      "trackMouseMove": 0.08,
+      "fontSize": 77,
+      "lineHeight": 77,
+      "letterSpacing": 0,
+      "fontFamily": "JetBrains Mono",
+      "fontStyle": "regular",
+      "fontWeight": "400",
+      "textAlign": "center",
+      "textContent": "ELEMENTS",
+      "fill": [
+        "#FFFFFF"
+      ],
+      "gradientAngle": 0,
+      "gradientType": "linear",
+      "fontSizeMode": "fixed",
+      "fontCSS": {
+        "family": "JetBrains Mono",
+        "src": "https://assets.unicorn.studio/fonts/google_fonts/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.ttf"
+      },
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision mediump float; in vec2 vTextureCoord; in vec3 vVertexPosition;uniform sampler2D uBgTexture; uniform sampler2D uTexture; uniform vec2 uMousePos; uniform vec2 uResolution; uniform int uSampleBg;vec2 perspectiveUV(vec2 uv) { float aspectRatio = uResolution.x/uResolution.y; vec2 centeredUV = uv - 0.5; centeredUV.x *= aspectRatio; float strength = 1.0 + (vVertexPosition.z * 0.4600); vec2 perspectiveUV = centeredUV / strength; perspectiveUV.x /= aspectRatio; perspectiveUV += 0.5; return perspectiveUV; }out vec4 fragColor;void main() { vec2 uv = vTextureCoord; vec2 pos = mix(vec2(0), (uMousePos - 0.5), 0.0800);uv = perspectiveUV(uv) - pos;vec4 color = texture(uTexture, uv); vec4 background = vec4(0);if(uSampleBg == 1) { background = texture(uBgTexture, vTextureCoord); }color = mix(background, color / max(color.a, 0.0001), color.a * 1.0000);fragColor = color; }"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;uniform mat4 uMVMatrix; uniform mat4 uPMatrix; uniform mat4 uTextureMatrix; uniform vec2 uMousePos;out vec2 vTextureCoord; out vec3 vVertexPosition;void main() { float angleX = uMousePos.y * 0.5 - 0.25; float angleY = (1.-uMousePos.x) * 0.5 - 0.25; mat4 rotateX = mat4(1.0, 0.0, 0.0, 0.0, 0.0, cos(angleX), -sin(angleX), 0.0, 0.0, sin(angleX), cos(angleX), 0.0, 0.0, 0.0, 0.0, 1.0); mat4 rotateY = mat4(cos(angleY), 0.0, sin(angleY), 0.0, 0.0, 1.0, 0.0, 0.0, -sin(angleY), 0.0, cos(angleY), 0.0, 0.0, 0.0, 0.0, 1.0);mat4 rotationMatrix = rotateX * rotateY; gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); vVertexPosition = (rotationMatrix * vec4(aVertexPosition, 1.0)).xyz; vTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy; }"
+      ],
+      "data": {
+        "uniforms": {}
+      },
+      "windowWidth": 1440
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "layerType": "effect",
+      "type": "dither",
+      "usesPingPong": false,
+      "speed": 0.5,
+      "texture": {
+        "name": "uni.png",
+        "sampler": "uCustomTexture",
+        "thumb": "https://firebasestorage.googleapis.com/v0/b/unicorn-studio.appspot.com/o/Zz28X5RDkvcGGVYLr9X6QdTIhxy1%2Funi_%40thumbnail.png?alt=media&token=b3735764-a8c0-4217-9b23-89d4f0353791",
+        "src": "https://firebasestorage.googleapis.com/v0/b/unicorn-studio.appspot.com/o/Zz28X5RDkvcGGVYLr9X6QdTIhxy1%2Funi.png?alt=media&token=b3735764-a8c0-4217-9b23-89d4f0353791"
+      },
+      "parentLayer": "87686b5d-746c-4f84-afba-1d4550d60df4",
+      "animating": true,
+      "mouseMomentum": 0,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 vVertexPosition; in vec2 vTextureCoord;uniform sampler2D uTexture;uniform float uTime;uniform vec2 uResolution;uint fibonacciHash(uint x) { const uint FIB_HASH = 2654435769u; uint hash = x * FIB_HASH; hash ^= hash >> 16; hash *= 0x85ebca6bu; hash ^= hash >> 13; hash *= 0xc2b2ae35u; hash ^= hash >> 16; return hash; }float randFibo(vec2 xy) { uvec2 xi = floatBitsToUint(xy); uint hashed = fibonacciHash(xi.x ^ fibonacciHash(xi.y)); return float(hashed) / float(0xffffffffu); }const int MAX_LEVEL = 4; const float PI2 = 6.28318530718;float getBayerFromCoordLevelScaled(vec2 pixelpos, float scale) { float finalBayer = 0.0; float finalDivisor = 0.0; float layerMult = 1.0;for(float bayerLevel = float(MAX_LEVEL); bayerLevel >= 1.0; bayerLevel--) { float bayerSize = exp2(bayerLevel) * 0.5 / scale; vec2 bayercoord = mod(floor(pixelpos.xy / bayerSize), 2.0); layerMult *= 4.0;float byxx2 = bayercoord.x * 2.0;finalBayer += mix(byxx2, 3.0 - byxx2, bayercoord.y) / 3.0 * layerMult; finalDivisor += layerMult; }return (finalBayer / finalDivisor - 0.001); }float getBayerNoise(vec2 st, float delta, float scale) { return getBayerFromCoordLevelScaled(st * uResolution + delta, scale); }vec3 dither(vec3 color, vec2 st) { float delta = floor(uTime); vec2 offset = vec2(randFibo(vec2(123,16) + delta), randFibo(vec2(56,96) + delta)); float noise = 0.0; noise = getBayerNoise(st, delta, 0.5); float dither_threshold = max(0.0001, 1.0000); float num_levels = 1.0 / dither_threshold; return floor(color * num_levels + noise) / num_levels; }out vec4 fragColor;void main() { vec2 uv = vTextureCoord; float delta = floor(uTime); vec4 color = texture(uTexture, uv);if(color.a == 0.) { fragColor = vec4(0); return; }color.rgb = mix(color.rgb, dither(color.rgb, vTextureCoord), 1.0000); fragColor = color;}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;uniform mat4 uMVMatrix; uniform mat4 uPMatrix; uniform mat4 uTextureMatrix;out vec2 vTextureCoord; out vec3 vVertexPosition;void main() { gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); vTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy; }"
+      ],
+      "data": {
+        "depth": false,
+        "uniforms": {},
+        "texture": {
+          "src": "https://assets.unicorn.studio/media/blue_noise_med.png",
+          "sampler": "uBlueNoise"
+        }
+      }
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "layerType": "effect",
+      "type": "blur",
+      "usesPingPong": false,
+      "amount": 5,
+      "trackMouse": 1,
+      "mouseMomentum": 1,
+      "animating": false,
+      "isMask": 0,
+      "states": {
+        "appear": [],
+        "scroll": [
+          {
+            "type": "scroll",
+            "id": "278e1af3-bd52-452b-b2a2-faed1f70b599",
+            "prop": "amount",
+            "progress": 0,
+            "momentum": 1,
+            "range": 1,
+            "offset": 1,
+            "mode": "scrollIntoView",
+            "delta": 0.01,
+            "sceneTop": 0,
+            "startScroll": 0,
+            "endScroll": 0,
+            "lastScrollTop": 0,
+            "absScrollValue": 0,
+            "value": 0,
+            "breakpoints": [],
+            "uniformData": {
+              "type": "1f",
+              "name": "uAmount"
+            }
+          }
+        ],
+        "hover": []
+      },
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision highp float;in vec3 vVertexPosition; in vec2 vTextureCoord;uniform sampler2D uTexture; uniform float uAmount; uniform vec2 uMousePos; uniform vec2 uResolution; float ease (int easingFunc, float t) { return t; }out vec4 fragColor;const int kernelSize = 36; float getGaussianWeight(int index) { switch(index) { case 0: return 0.00094768; case 1: return 0.00151965; case 2: return 0.00237008; case 3: return 0.00359517; case 4: return 0.0053041; case 5: return 0.00761097; case 6: return 0.01062197; case 7: return 0.01441804; case 8: return 0.01903459; case 9: return 0.0244409; case 10: return 0.03052299; case 11: return 0.03707432; case 12: return 0.04379813; case 13: return 0.05032389; case 14: return 0.05623791; case 15: return 0.06112521; case 16: return 0.06461716; case 17: return 0.06643724; case 18: return 0.06643724; case 19: return 0.06461716; case 20: return 0.06112521; case 21: return 0.05623791; case 22: return 0.05032389; case 23: return 0.04379813; case 24: return 0.03707432; case 25: return 0.03052299; case 26: return 0.0244409; case 27: return 0.01903459; case 28: return 0.01441804; case 29: return 0.01062197; case 30: return 0.00761097; case 31: return 0.0053041; case 32: return 0.00359517; case 33: return 0.00237008; case 34: return 0.00151965; case 35: return 0.00094768; default: return 0.0; } }vec4 GaussianBlur(sampler2D tex, vec2 uv, vec2 direction) { vec4 color = vec4(0.0); vec2 pos = vec2(0.5, 0.5) + mix(vec2(0), (uMousePos-0.5), 1.0000); float inner = distance(uv, pos); float outer = max(0., 1.-distance(uv, pos));float amt = 0 <= 1 ? 6. : 11.; float amount = (uAmount * amt) * ease(0, mix(inner, outer, 0.5000)); color += texture(tex, uv) * getGaussianWeight(0); for (int i = 0; i < kernelSize; i++) { float x = float(i - kernelSize / 2) * amount; color += texture(tex, uv + vec2(x * 0.001) * direction * vec2(0.5000, 1. - 0.5000)) * getGaussianWeight(i); } return color; }vec4 blur(vec2 uv, vec2 direction) { return GaussianBlur(uTexture, uv, direction); }void main() { vec2 uv = vTextureCoord; vec4 color = vec4(0); int dir = 0 % 2; vec2 direction = dir == 1 ? vec2(0, uResolution.x/uResolution.y) : vec2(1, 0);color = blur(uv, direction); fragColor = color;}",
+        "#version 300 es\nprecision highp float;in vec3 vVertexPosition; in vec2 vTextureCoord;uniform sampler2D uTexture; uniform float uAmount; uniform vec2 uMousePos; uniform vec2 uResolution; float ease (int easingFunc, float t) { return t; }out vec4 fragColor;const int kernelSize = 36; float getGaussianWeight(int index) { switch(index) { case 0: return 0.00094768; case 1: return 0.00151965; case 2: return 0.00237008; case 3: return 0.00359517; case 4: return 0.0053041; case 5: return 0.00761097; case 6: return 0.01062197; case 7: return 0.01441804; case 8: return 0.01903459; case 9: return 0.0244409; case 10: return 0.03052299; case 11: return 0.03707432; case 12: return 0.04379813; case 13: return 0.05032389; case 14: return 0.05623791; case 15: return 0.06112521; case 16: return 0.06461716; case 17: return 0.06643724; case 18: return 0.06643724; case 19: return 0.06461716; case 20: return 0.06112521; case 21: return 0.05623791; case 22: return 0.05032389; case 23: return 0.04379813; case 24: return 0.03707432; case 25: return 0.03052299; case 26: return 0.0244409; case 27: return 0.01903459; case 28: return 0.01441804; case 29: return 0.01062197; case 30: return 0.00761097; case 31: return 0.0053041; case 32: return 0.00359517; case 33: return 0.00237008; case 34: return 0.00151965; case 35: return 0.00094768; default: return 0.0; } }vec4 GaussianBlur(sampler2D tex, vec2 uv, vec2 direction) { vec4 color = vec4(0.0); vec2 pos = vec2(0.5, 0.5) + mix(vec2(0), (uMousePos-0.5), 1.0000); float inner = distance(uv, pos); float outer = max(0., 1.-distance(uv, pos));float amt = 1 <= 1 ? 6. : 11.; float amount = (uAmount * amt) * ease(0, mix(inner, outer, 0.5000)); color += texture(tex, uv) * getGaussianWeight(0); for (int i = 0; i < kernelSize; i++) { float x = float(i - kernelSize / 2) * amount; color += texture(tex, uv + vec2(x * 0.001) * direction * vec2(0.5000, 1. - 0.5000)) * getGaussianWeight(i); } return color; }vec4 blur(vec2 uv, vec2 direction) { return GaussianBlur(uTexture, uv, direction); }void main() { vec2 uv = vTextureCoord; vec4 color = vec4(0); int dir = 1 % 2; vec2 direction = dir == 1 ? vec2(0, uResolution.x/uResolution.y) : vec2(1, 0);color = blur(uv, direction); fragColor = color;}",
+        "#version 300 es\nprecision highp float;in vec3 vVertexPosition; in vec2 vTextureCoord;uniform sampler2D uTexture; uniform float uAmount; uniform vec2 uMousePos; uniform vec2 uResolution; float ease (int easingFunc, float t) { return t; }out vec4 fragColor;const int kernelSize = 36; float getGaussianWeight(int index) { switch(index) { case 0: return 0.00094768; case 1: return 0.00151965; case 2: return 0.00237008; case 3: return 0.00359517; case 4: return 0.0053041; case 5: return 0.00761097; case 6: return 0.01062197; case 7: return 0.01441804; case 8: return 0.01903459; case 9: return 0.0244409; case 10: return 0.03052299; case 11: return 0.03707432; case 12: return 0.04379813; case 13: return 0.05032389; case 14: return 0.05623791; case 15: return 0.06112521; case 16: return 0.06461716; case 17: return 0.06643724; case 18: return 0.06643724; case 19: return 0.06461716; case 20: return 0.06112521; case 21: return 0.05623791; case 22: return 0.05032389; case 23: return 0.04379813; case 24: return 0.03707432; case 25: return 0.03052299; case 26: return 0.0244409; case 27: return 0.01903459; case 28: return 0.01441804; case 29: return 0.01062197; case 30: return 0.00761097; case 31: return 0.0053041; case 32: return 0.00359517; case 33: return 0.00237008; case 34: return 0.00151965; case 35: return 0.00094768; default: return 0.0; } }vec4 GaussianBlur(sampler2D tex, vec2 uv, vec2 direction) { vec4 color = vec4(0.0); vec2 pos = vec2(0.5, 0.5) + mix(vec2(0), (uMousePos-0.5), 1.0000); float inner = distance(uv, pos); float outer = max(0., 1.-distance(uv, pos));float amt = 2 <= 1 ? 6. : 11.; float amount = (uAmount * amt) * ease(0, mix(inner, outer, 0.5000)); color += texture(tex, uv) * getGaussianWeight(0); for (int i = 0; i < kernelSize; i++) { float x = float(i - kernelSize / 2) * amount; color += texture(tex, uv + vec2(x * 0.001) * direction * vec2(0.5000, 1. - 0.5000)) * getGaussianWeight(i); } return color; }vec4 blur(vec2 uv, vec2 direction) { return GaussianBlur(uTexture, uv, direction); }void main() { vec2 uv = vTextureCoord; vec4 color = vec4(0); int dir = 2 % 2; vec2 direction = dir == 1 ? vec2(0, uResolution.x/uResolution.y) : vec2(1, 0);color = blur(uv, direction); fragColor = color;}",
+        "#version 300 es\nprecision highp float;in vec3 vVertexPosition; in vec2 vTextureCoord;uniform sampler2D uTexture; uniform float uAmount; uniform vec2 uMousePos; uniform vec2 uResolution; float ease (int easingFunc, float t) { return t; } uint fibonacciHash(uint x) { const uint FIB_HASH = 2654435769u; uint hash = x * FIB_HASH; hash ^= hash >> 16; hash *= 0x85ebca6bu; hash ^= hash >> 13; hash *= 0xc2b2ae35u; hash ^= hash >> 16; return hash; }float randFibo(vec2 xy) { uvec2 xi = floatBitsToUint(xy); uint hashed = fibonacciHash(xi.x ^ fibonacciHash(xi.y)); return float(hashed) / float(0xffffffffu); }out vec4 fragColor;const int kernelSize = 36; float getGaussianWeight(int index) { switch(index) { case 0: return 0.00094768; case 1: return 0.00151965; case 2: return 0.00237008; case 3: return 0.00359517; case 4: return 0.0053041; case 5: return 0.00761097; case 6: return 0.01062197; case 7: return 0.01441804; case 8: return 0.01903459; case 9: return 0.0244409; case 10: return 0.03052299; case 11: return 0.03707432; case 12: return 0.04379813; case 13: return 0.05032389; case 14: return 0.05623791; case 15: return 0.06112521; case 16: return 0.06461716; case 17: return 0.06643724; case 18: return 0.06643724; case 19: return 0.06461716; case 20: return 0.06112521; case 21: return 0.05623791; case 22: return 0.05032389; case 23: return 0.04379813; case 24: return 0.03707432; case 25: return 0.03052299; case 26: return 0.0244409; case 27: return 0.01903459; case 28: return 0.01441804; case 29: return 0.01062197; case 30: return 0.00761097; case 31: return 0.0053041; case 32: return 0.00359517; case 33: return 0.00237008; case 34: return 0.00151965; case 35: return 0.00094768; default: return 0.0; } }vec4 GaussianBlur(sampler2D tex, vec2 uv, vec2 direction) { vec4 color = vec4(0.0); vec2 pos = vec2(0.5, 0.5) + mix(vec2(0), (uMousePos-0.5), 1.0000); float inner = distance(uv, pos); float outer = max(0., 1.-distance(uv, pos));float amt = 3 <= 1 ? 6. : 11.; float amount = (uAmount * amt) * ease(0, mix(inner, outer, 0.5000)); color += texture(tex, uv) * getGaussianWeight(0); for (int i = 0; i < kernelSize; i++) { float x = float(i - kernelSize / 2) * amount; color += texture(tex, uv + vec2(x * 0.001) * direction * vec2(0.5000, 1. - 0.5000)) * getGaussianWeight(i); } return color; }vec4 blur(vec2 uv, vec2 direction) { return GaussianBlur(uTexture, uv, direction); }void main() { vec2 uv = vTextureCoord; vec4 color = vec4(0); int dir = 3 % 2; vec2 direction = dir == 1 ? vec2(0, uResolution.x/uResolution.y) : vec2(1, 0);color = blur(uv, direction);float dither = (randFibo(gl_FragCoord.xy) - 0.5) / 255.0; color.rgb += dither; fragColor = color;}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;uniform mat4 uMVMatrix; uniform mat4 uPMatrix; uniform mat4 uTextureMatrix;out vec2 vTextureCoord; out vec3 vVertexPosition;void main() { gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); vTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy; }"
+      ],
+      "data": {
+        "downSample": 0.25,
+        "depth": false,
+        "uniforms": {},
+        "passes": [
+          {
+            "prop": "vertical",
+            "value": 1,
+            "downSample": 0.25
+          },
+          {
+            "prop": "vertical",
+            "value": 2,
+            "downSample": 0.5
+          },
+          {
+            "prop": "vertical",
+            "value": 3,
+            "downSample": 0.5
+          }
+        ]
+      }
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "layerType": "effect",
+      "type": "dither",
+      "usesPingPong": false,
+      "speed": 0.5,
+      "animating": true,
+      "mouseMomentum": 0,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 vVertexPosition; in vec2 vTextureCoord;uniform sampler2D uTexture;uniform float uTime;uniform vec2 uResolution;uint fibonacciHash(uint x) { const uint FIB_HASH = 2654435769u; uint hash = x * FIB_HASH; hash ^= hash >> 16; hash *= 0x85ebca6bu; hash ^= hash >> 13; hash *= 0xc2b2ae35u; hash ^= hash >> 16; return hash; }float randFibo(vec2 xy) { uvec2 xi = floatBitsToUint(xy); uint hashed = fibonacciHash(xi.x ^ fibonacciHash(xi.y)); return float(hashed) / float(0xffffffffu); }const int MAX_LEVEL = 4; const float PI2 = 6.28318530718;float getBayerFromCoordLevelScaled(vec2 pixelpos, float scale) { float finalBayer = 0.0; float finalDivisor = 0.0; float layerMult = 1.0;for(float bayerLevel = float(MAX_LEVEL); bayerLevel >= 1.0; bayerLevel--) { float bayerSize = exp2(bayerLevel) * 0.5 / scale; vec2 bayercoord = mod(floor(pixelpos.xy / bayerSize), 2.0); layerMult *= 4.0;float byxx2 = bayercoord.x * 2.0;finalBayer += mix(byxx2, 3.0 - byxx2, bayercoord.y) / 3.0 * layerMult; finalDivisor += layerMult; }return (finalBayer / finalDivisor - 0.001); }float getBayerNoise(vec2 st, float delta, float scale) { return getBayerFromCoordLevelScaled(st * uResolution + delta, scale); }vec3 dither(vec3 color, vec2 st) { float delta = floor(uTime); vec2 offset = vec2(randFibo(vec2(123,16) + delta), randFibo(vec2(56,96) + delta)); float noise = 0.0; noise = getBayerNoise(st, delta, 0.25); float dither_threshold = max(0.0001, 1.0000); float num_levels = 1.0 / dither_threshold; return floor(color * num_levels + noise) / num_levels; }out vec4 fragColor;void main() { vec2 uv = vTextureCoord; float delta = floor(uTime); vec4 color = texture(uTexture, uv);if(color.a == 0.) { fragColor = vec4(0); return; }color.rgb = mix(color.rgb, dither(color.rgb, vTextureCoord), 1.0000); fragColor = color;}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;uniform mat4 uMVMatrix; uniform mat4 uPMatrix; uniform mat4 uTextureMatrix;out vec2 vTextureCoord; out vec3 vVertexPosition;void main() { gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); vTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy; }"
+      ],
+      "data": {
+        "depth": false,
+        "uniforms": {},
+        "texture": {
+          "src": "https://assets.unicorn.studio/media/blue_noise_med.png",
+          "sampler": "uBlueNoise"
+        }
+      }
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "locked": false,
+      "aspectRatio": 1,
+      "layerName": "Supporting",
+      "userDownsample": 1,
+      "isElement": true,
+      "opacity": 0,
+      "effects": [],
+      "displace": 0,
+      "trackMouse": 0.08,
+      "anchorPoint": "center",
+      "mouseMomentum": 1,
+      "blendMode": "NORMAL",
+      "bgDisplace": 0,
+      "mask": 0,
+      "maskBackground": {
+        "type": "Vec3",
+        "_x": 0,
+        "_y": 0,
+        "_z": 0
+      },
+      "maskAlpha": 0,
+      "maskDepth": 0,
+      "dispersion": 0,
+      "axisTilt": 0.46,
+      "states": {
+        "appear": [],
+        "scroll": [
+          {
+            "type": "scroll",
+            "id": "952694a7-2f99-4f3d-a082-b1bd224589ca",
+            "prop": "opacity",
+            "progress": 0,
+            "momentum": 1,
+            "range": 1,
+            "offset": 0,
+            "mode": "scrollIntoView",
+            "delta": 0.01,
+            "sceneTop": 0,
+            "startScroll": 0,
+            "endScroll": 0,
+            "lastScrollTop": 0,
+            "absScrollValue": true,
+            "value": 1,
+            "breakpoints": [],
+            "uniformData": {
+              "type": "1f",
+              "name": "uOpacity"
+            }
+          }
+        ],
+        "hover": []
+      },
+      "layerType": "text",
+      "justCreated": false,
+      "isSafari": false,
+      "width": 1011,
+      "widthMode": "fixed",
+      "height": 14,
+      "heightMode": "fixed",
+      "left": 0.5,
+      "leftMode": "relative",
+      "top": 0.6458333333333331,
+      "topMode": "relative",
+      "rotation": 0,
+      "trackMouseMove": 0.08,
+      "fontSize": 14,
+      "lineHeight": 14,
+      "letterSpacing": 0,
+      "fontFamily": "JetBrains Mono",
+      "fontStyle": "regular",
+      "fontWeight": "400",
+      "textAlign": "center",
+      "textContent": "PRESS [P] TO PLAY",
+      "fill": [
+        "#FFFFFF"
+      ],
+      "gradientAngle": 0,
+      "gradientType": "linear",
+      "fontSizeMode": "fixed",
+      "fontCSS": {
+        "family": "JetBrains Mono",
+        "src": "https://assets.unicorn.studio/fonts/google_fonts/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.ttf"
+      },
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision mediump float; in vec2 vTextureCoord; in vec3 vVertexPosition;uniform sampler2D uBgTexture; uniform sampler2D uTexture; uniform vec2 uMousePos; uniform vec2 uResolution; uniform float uOpacity; uniform int uSampleBg;vec2 perspectiveUV(vec2 uv) { float aspectRatio = uResolution.x/uResolution.y; vec2 centeredUV = uv - 0.5; centeredUV.x *= aspectRatio; float strength = 1.0 + (vVertexPosition.z * 0.4600); vec2 perspectiveUV = centeredUV / strength; perspectiveUV.x /= aspectRatio; perspectiveUV += 0.5; return perspectiveUV; }out vec4 fragColor;void main() { vec2 uv = vTextureCoord; vec2 pos = mix(vec2(0), (uMousePos - 0.5), 0.0800);uv = perspectiveUV(uv) - pos;vec4 color = texture(uTexture, uv); vec4 background = vec4(0);if(uSampleBg == 1) { background = texture(uBgTexture, vTextureCoord); }color = mix(background, color / max(color.a, 0.0001), color.a * uOpacity);fragColor = color; }"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;uniform mat4 uMVMatrix; uniform mat4 uPMatrix; uniform mat4 uTextureMatrix; uniform vec2 uMousePos;out vec2 vTextureCoord; out vec3 vVertexPosition;void main() { float angleX = uMousePos.y * 0.5 - 0.25; float angleY = (1.-uMousePos.x) * 0.5 - 0.25; mat4 rotateX = mat4(1.0, 0.0, 0.0, 0.0, 0.0, cos(angleX), -sin(angleX), 0.0, 0.0, sin(angleX), cos(angleX), 0.0, 0.0, 0.0, 0.0, 1.0); mat4 rotateY = mat4(cos(angleY), 0.0, sin(angleY), 0.0, 0.0, 1.0, 0.0, 0.0, -sin(angleY), 0.0, cos(angleY), 0.0, 0.0, 0.0, 0.0, 1.0);mat4 rotationMatrix = rotateX * rotateY; gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); vVertexPosition = (rotationMatrix * vec4(aVertexPosition, 1.0)).xyz; vTextureCoord = (uTextureMatrix * vec4(aTextureCoord, 0.0, 1.0)).xy; }"
+      ],
+      "data": {
+        "uniforms": {}
+      },
+      "windowWidth": 1440
+    },
+    {
+      "breakpoints": [],
+      "visible": true,
+      "aspectRatio": 1,
+      "userDownsample": 1,
+      "layerType": "effect",
+      "type": "bulge",
+      "usesPingPong": false,
+      "trackMouse": 1,
+      "mouseMomentum": 1,
+      "animating": false,
+      "isMask": 0,
+      "compiledFragmentShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 vVertexPosition; in vec2 vTextureCoord; in float zPos;uniform sampler2D uTexture;float random(vec2 seed) { return fract(sin(dot(seed.xy, vec2(12.9898, 78.233))) * 43758.5453); }out vec4 fragColor; void main() { vec2 uv = vTextureCoord; vec4 color = texture(uTexture, uv);float intensity = 0.0000 * 0.5;float rad = (0.5000 - 0.25) * -2. * 3.14159; vec2 rotatedLightPosition = vec2(cos(rad), sin(rad)); vec3 lightPosition = vec3(vec2(0.5) * rotatedLightPosition * 2., 1.0);float diff = max(dot(normalize(vVertexPosition), lightPosition), 0.0); color.rgb += (diff * intensity - intensity);float dither = (random(gl_FragCoord.xy) - 0.5) / 255.0; color.rgb += dither; fragColor = color;}"
+      ],
+      "compiledVertexShaders": [
+        "#version 300 es\nprecision mediump float;in vec3 aVertexPosition; in vec2 aTextureCoord;out vec2 vTextureCoord; out vec3 vVertexPosition; out float zPos;uniform sampler2D uTexture;uniform vec2 uMousePos; uniform vec2 uResolution;float ease (int easingFunc, float t) { return t < 0.5 ? 2.0 * t * t : -1.0 + (4.0 - 2.0 * t) * t; }float bezier(float t) { return ease(3, t); }mat2 rot(float a) { return mat2(cos(a),-sin(a),sin(a),cos(a)); }vec3 bulge(vec3 pos) { vec2 aspectRatio = vec2(uResolution.x/uResolution.y, 1); vec2 mousePosAdjusted = mix((vec2(0.4798220198675497, 0.722682119205298) - 0.5) * 2., (uMousePos - 0.5) * 2., 1.0000); vec2 skew = vec2(0.5000, 1.-0.5000); mat2 rotation = rot(0.5000 * 2. * 3.14159);float dist = distance(pos.xy * aspectRatio * rotation * skew, mousePosAdjusted * aspectRatio * rotation * skew);float t = max(0., 1. - dist/0.5000); float bulge = bezier(t) * (0.7500 - 0.5);float luma = dot(texture(uTexture, (pos.xy + 1.) * 0.5).rgb, vec3(0.299, 0.587, 0.114));bulge += luma * bezier(t) * 0.0000; bulge = min(1., bulge);pos.xy += bulge * pos.xy; pos.z -= bulge; return pos; }void main() { vec3 pos = bulge(aVertexPosition); vec3 pos_dx = bulge(aVertexPosition + vec3(0.01, 0.0, 0.0)); vec3 pos_dy = bulge(aVertexPosition + vec3(0.0, 0.01, 0.0)); vec3 dx = pos_dx - pos; vec3 dy = pos_dy - pos; vec3 normal = normalize(cross(dx, dy));vVertexPosition = normal;zPos = pos.z;gl_Position = vec4(pos, 1.0); vTextureCoord = aTextureCoord; }"
+      ],
+      "data": {
+        "depth": true,
+        "uniforms": {}
+      }
+    }
+  ],
+  "options": {
+    "name": "Unicorn Headline Dither",
+    "fps": 60,
+    "dpi": 1.5,
+    "scale": 1,
+    "includeLogo": false,
+    "isProduction": false
+  },
+  "version": "1.4.17",
+  "id": "eTsoMz6Mx1aycBdwtFxw"
+}

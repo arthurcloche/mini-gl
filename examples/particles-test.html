@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Particle Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #000;
+      color: #fff;
+      font-family: monospace;
+    }
+    
+    canvas {
+      border: 1px solid #333;
+      display: block;
+      margin: 20px 0;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .control label {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    input[type="range"] {
+      width: 120px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎆 Simple Particle Test</h1>
+  <p>Move mouse to emit particles. They should fall with gravity.</p>
+  
+  <canvas id="particles" width="800" height="600"></canvas>
+  
+  <div class="controls">
+    <div class="control">
+      <label>Gravity</label>
+      <input type="range" id="gravity" min="0" max="0.002" step="0.0001" value="0.0005">
+    </div>
+    <div class="control">
+      <label>Damping</label>
+      <input type="range" id="damping" min="0.9" max="0.99" step="0.01" value="0.95">
+    </div>
+    <div class="control">
+      <label>Particle Size</label>
+      <input type="range" id="size" min="0.005" max="0.02" step="0.001" value="0.01">
+    </div>
+    <div class="control">
+      <label>Spawn Rate</label>
+      <input type="range" id="spawnRate" min="0.01" max="0.1" step="0.01" value="0.03">
+    </div>
+    <div class="control">
+      <label>Rotation Speed</label>
+      <input type="range" id="rotationSpeed" min="0" max="5" step="0.1" value="2.0">
+    </div>
+    <div class="control">
+      <label>Scale Variation</label>
+      <input type="range" id="scaleVariation" min="0.5" max="3" step="0.1" value="1.5">
+    </div>
+    <div class="control">
+      <label>Shadow Opacity</label>
+      <input type="range" id="shadowAlpha" min="0" max="0.8" step="0.05" value="0.3">
+    </div>
+  </div>
+
+  <script type="module">
+    import miniGL from '../lib/miniGL/miniGL.js';
+
+    const minigl = new miniGL('#particles');
+    
+    // Create a flower sprite using canvas 2D
+    const flowerSprite = minigl.canvas2D((ctx, width, height) => {
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const size = Math.min(width, height) * 0.4;
+      
+      // Clear background
+      ctx.clearRect(0, 0, width, height);
+      
+      // Draw flower petals
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      
+      // 6 petals
+      for (let i = 0; i < 6; i++) {
+        ctx.save();
+        ctx.rotate((i * Math.PI) / 3);
+        
+        // Petal gradient
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.6);
+        gradient.addColorStop(0, '#ff6b9d');
+        gradient.addColorStop(0.5, '#ff8cc8');
+        gradient.addColorStop(1, 'rgba(255, 107, 157, 0)');
+        
+        ctx.fillStyle = "rgba(255, 107, 157, 255)";
+        ctx.beginPath();
+        ctx.ellipse(0, -size * 0.3, size * 0.3, size * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+      }
+      
+      // Flower center
+      const centerGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.2);
+      centerGradient.addColorStop(0, '#ffd93d');
+      centerGradient.addColorStop(1, '#ff8c42');
+      
+      ctx.fillStyle = centerGradient;
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
+    }, { width: 64, height: 64 });
+    
+    // Create particle system
+    const particles = minigl.particles({
+      count: 1500,
+      size: 0.008, // Smaller base size since we'll scale in fragment shader
+    });
+    
+    // Enhanced particle shader with rotation, scaling, and drop shadow
+    const flowerParticles = particles.particle(`#version 300 es
+      precision highp float;
+      
+      in vec2 particleUV;
+      in vec4 particleColor;
+      in vec2 particleVel;
+      in float particleLife;
+      in float particleID;
+      in float quadVertexID;
+      
+      uniform sampler2D uFlower;
+      uniform float glTime;
+      uniform float twinkle;
+      uniform float rotationSpeed;
+      uniform float scaleVariation;
+      uniform float shadowOffset;
+      uniform float shadowAlpha;
+      
+      out vec4 fragColor;
+      
+      // Rotation matrix helper
+      mat2 rotate(float angle) {
+        float c = cos(angle);
+        float s = sin(angle);
+        return mat2(c, -s, s, c);
+      }
+      
+      void main() {
+        // Skip dead particles
+        if (particleLife < 0.5) {
+          discard;
+        }
+        
+        // Calculate particle age (assuming particles live for some time)
+        float age = particleLife; // 1.0 = just born, decreases over time if you implement aging
+        
+        // Use particle ID for unique per-particle randomness
+        float particleRandom = fract(sin(particleID * 12.9898) * 43758.5453);
+        
+        // Use quad vertex ID for effects (0-5 for each vertex in the quad)
+        float vertexVariation = quadVertexID / 6.0;
+        
+        // Calculate rotation based on velocity direction + time
+        float velocityAngle = atan(particleVel.y, particleVel.x);
+        float timeRotation = glTime * rotationSpeed * 0.1;
+        // Add per-particle random rotation offset
+        float randomRotation = particleRandom * 6.28318; // 0 to 2π
+        float totalRotation = velocityAngle + timeRotation + randomRotation;
+        
+        // Calculate dynamic scaling based on speed and age
+        float speed = length(particleVel);
+        float speedScale = 1.0 + speed * 10.0; // Scale with velocity
+        float ageScale = 0.5 + age * scaleVariation; // Scale with age
+        float finalScale = speedScale * ageScale;
+        
+        // Transform UV coordinates (center around 0, rotate, scale, then back)
+        vec2 centeredUV = particleUV - 0.5;
+        vec2 rotatedUV = rotate(totalRotation) * centeredUV;
+        vec2 scaledUV = rotatedUV / finalScale;
+        vec2 finalUV = scaledUV + 0.5;
+        
+        // Sample flower texture for main flower
+        vec4 flowerColor = texture(uFlower, finalUV);
+        
+        // Create drop shadow by sampling offset texture
+        vec2 shadowUV = finalUV + vec2(shadowOffset, -shadowOffset);
+        vec4 shadowSample = texture(uFlower, shadowUV);
+        vec3 shadowColor = vec3(0.0, 0.0, 0.0); // Black shadow
+        float shadowMask = shadowSample.a * shadowAlpha;
+        
+        // Combine shadow and flower (shadow behind flower)
+        vec3 finalColor = mix(shadowColor, flowerColor.rgb, flowerColor.a);
+        float finalAlpha = max(shadowMask * (1.0 - flowerColor.a), flowerColor.a);
+        
+        // Add sparkle effect with per-particle timing
+        float sparklePhase = particleID * 0.1; // Unique phase per particle
+        float sparkle = sin(glTime * 20.0 + finalUV.x * 50.0 + sparklePhase) * 0.5 + 0.5;
+        sparkle *= sin(glTime * 15.0 + finalUV.y * 40.0 + sparklePhase) * 0.5 + 0.5;
+        sparkle *= speed * twinkle;
+        
+        finalColor += sparkle * 0.3;
+        
+        // Apply particle color and life
+        finalColor *= particleColor.rgb;
+        finalAlpha *= particleColor.a * age; // Fade out as particles age
+        
+        fragColor = vec4(finalColor, finalAlpha);
+      }
+    `, {
+      twinkle: 0.5,
+      rotationSpeed: 2.0,
+      scaleVariation: 1.5,
+      shadowOffset: 0.05,
+      shadowAlpha: 0.3
+    }, {
+      quadSize: 0.12  // Slightly larger to accommodate rotation and scaling
+    });
+    
+    // Connect flower sprite to particle shader
+    minigl.connect(flowerSprite, flowerParticles, 'uFlower');
+    minigl.output(flowerParticles);
+
+    // Controls
+    document.getElementById('gravity').addEventListener('input', (e) => {
+      particles.updateUniform('gravity', parseFloat(e.target.value));
+    });
+
+    document.getElementById('damping').addEventListener('input', (e) => {
+      particles.updateUniform('damping', parseFloat(e.target.value));
+    });
+
+    document.getElementById('size').addEventListener('input', (e) => {
+      particles.setSize(parseFloat(e.target.value));
+    });
+
+    document.getElementById('spawnRate').addEventListener('input', (e) => {
+      particles.updateUniform('spawnRate', parseFloat(e.target.value));
+    });
+
+    document.getElementById('rotationSpeed').addEventListener('input', (e) => {
+      flowerParticles.updateUniform('rotationSpeed', parseFloat(e.target.value));
+    });
+
+    document.getElementById('scaleVariation').addEventListener('input', (e) => {
+      flowerParticles.updateUniform('scaleVariation', parseFloat(e.target.value));
+    });
+
+    document.getElementById('shadowAlpha').addEventListener('input', (e) => {
+      flowerParticles.updateUniform('shadowAlpha', parseFloat(e.target.value));
+    });
+
+    function animate() {
+      minigl.render();
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html> 

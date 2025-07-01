@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>miniGL Web Components Demo</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #1a1a1a;
+      color: white;
+      font-family: monospace;
+    }
+
+    .demo-section {
+      margin-bottom: 40px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .demo-title {
+      color: #00ff88;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .demo-description {
+      color: #888;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    minigl-canvas {
+      width: 100%;
+      height: 300px;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
+
+    .controls {
+      margin-top: 15px;
+    }
+
+    .controls button {
+      background: #333;
+      color: white;
+      border: 1px solid #555;
+      padding: 8px 16px;
+      margin-right: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .controls button:hover {
+      background: #555;
+    }
+
+    .controls input[type="range"] {
+      margin: 0 10px;
+    }
+
+    .source-code {
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 15px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+
+    .source-code pre {
+      margin: 0;
+    }
+
+    h1 {
+      color: #00ff88;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .warning {
+      background: #332200;
+      border: 1px solid #664400;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .info {
+      background: #002233;
+      border: 1px solid #004466;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>miniGL Web Components Demo</h1>
+  
+  <div class="info">
+    <strong>Info:</strong> This demo shows miniGL's web component API. Each example demonstrates different ways to connect nodes and create effects declaratively in HTML.
+  </div>
+
+  <div id="webgl-check" class="warning" style="display: none;">
+    <strong>Warning:</strong> WebGL2 is not supported in your browser. The demos will not work.
+  </div>
+
+  <!-- Demo 1: Simple Shader -->
+  <div class="demo-section">
+    <div class="demo-title">1. Simple Color Shader</div>
+    <div class="demo-description">
+      A basic shader that creates a red circle. This shows the simplest use case.
+    </div>
+
+    <minigl-canvas debug>
+      <shader-node id="circle" fragment="
+        #version 300 es
+        precision highp float;
+        uniform float glTime;
+        in vec2 glCoord;
+        out vec4 fragColor;
+        void main() {
+          float dist = length(glCoord - 0.5);
+          float circle = smoothstep(0.3, 0.25, dist);
+          float pulse = 0.8 + 0.2 * sin(glTime * 0.1);
+          fragColor = vec4(circle * pulse, 0.0, 0.0, 1.0);
+        }
+      "></shader-node>
+    </minigl-canvas>
+
+    <div class="source-code">
+      <pre>&lt;minigl-canvas debug&gt;
+  &lt;shader-node id="circle" fragment="..."&gt;&lt;/shader-node&gt;
+&lt;/minigl-canvas&gt;</pre>
+    </div>
+  </div>
+
+  <!-- Demo 2: Image Processing -->
+  <div class="demo-section">
+    <div class="demo-title">2. Image with Shader Processing</div>
+    <div class="demo-description">
+      Load an image and apply a shader effect. Uses explicit input connections.
+    </div>
+
+    <minigl-canvas output="effect">
+      <canvas-node id="source" color="#4080ff" width="512" height="512"></canvas-node>
+      
+      <shader-node id="effect">
+        <input-connection name="glTexture" from="source"></input-connection>
+        #version 300 es
+        precision highp float;
+        uniform sampler2D glTexture;
+        uniform float glTime;
+        in vec2 glUV;
+        in vec2 glCoord;
+        out vec4 fragColor;
+        void main() {
+          vec2 uv = glUV + 0.02 * sin(glCoord * 20.0 + glTime * 0.1);
+          vec4 color = texture(glTexture, uv);
+          fragColor = color * (0.8 + 0.2 * sin(glTime * 0.05));
+        }
+      </shader-node>
+    </minigl-canvas>
+
+    <div class="source-code">
+      <pre>&lt;minigl-canvas output="effect"&gt;
+  &lt;canvas-node id="source" color="#4080ff"&gt;&lt;/canvas-node&gt;
+  &lt;shader-node id="effect"&gt;
+    &lt;input-connection name="glTexture" from="source"&gt;&lt;/input-connection&gt;
+    /* shader code here */
+  &lt;/shader-node&gt;
+&lt;/minigl-canvas&gt;</pre>
+    </div>
+  </div>
+
+  <!-- Demo 3: Blend Nodes -->
+  <div class="demo-section">
+    <div class="demo-title">3. Blend Operations</div>
+    <div class="demo-description">
+      Create two sources and blend them together with different blend modes.
+    </div>
+
+    <minigl-canvas output="blend">
+      <shader-node id="circles">
+        #version 300 es
+        precision highp float;
+        uniform float glTime;
+        in vec2 glCoord;
+        out vec4 fragColor;
+        void main() {
+          vec2 pos1 = vec2(0.3 + 0.1 * sin(glTime * 0.08), 0.5);
+          vec2 pos2 = vec2(0.7 + 0.1 * cos(glTime * 0.06), 0.5);
+          float circle1 = smoothstep(0.15, 0.1, length(glCoord - pos1));
+          float circle2 = smoothstep(0.15, 0.1, length(glCoord - pos2));
+          fragColor = vec4(circle1, circle2, 0.0, max(circle1, circle2));
+        }
+      </shader-node>
+
+      <shader-node id="background">
+        #version 300 es
+        precision highp float;
+        uniform float glTime;
+        in vec2 glCoord;
+        out vec4 fragColor;
+        void main() {
+          float noise = sin(glCoord.x * 10.0 + glTime * 0.1) * sin(glCoord.y * 10.0);
+          fragColor = vec4(0.1, 0.1, 0.3 + 0.2 * noise, 1.0);
+        }
+      </shader-node>
+
+      <blend-node id="blend" mode="add" opacity="0.8" 
+                  connects-base="background" 
+                  connects-blend="circles">
+      </blend-node>
+    </minigl-canvas>
+
+    <div class="controls">
+      <button onclick="changeBlendMode('normal')">Normal</button>
+      <button onclick="changeBlendMode('add')">Add</button>
+      <button onclick="changeBlendMode('multiply')">Multiply</button>
+      <button onclick="changeBlendMode('screen')">Screen</button>
+      Opacity: <input type="range" min="0" max="1" step="0.1" value="0.8" 
+                      onchange="changeOpacity(this.value)">
+    </div>
+
+    <div class="source-code">
+      <pre>&lt;blend-node id="blend" mode="add" opacity="0.8" 
+            connects-base="background" 
+            connects-blend="circles"&gt;
+&lt;/blend-node&gt;</pre>
+    </div>
+  </div>
+
+  <!-- Demo 4: Feedback/Pingpong -->
+  <div class="demo-section">
+    <div class="demo-title">4. Feedback Effects</div>
+    <div class="demo-description">
+      Use feedback nodes to create trails and accumulative effects.
+    </div>
+
+    <minigl-canvas output="trails">
+      <feedback-node id="trails" uniforms='{"decay": 0.98}'>
+        #version 300 es
+        precision highp float;
+        uniform sampler2D glPrevious;
+        uniform float glTime;
+        uniform float decay;
+        uniform vec3 glMouse;
+        in vec2 glUV;
+        in vec2 glCoord;
+        out vec4 fragColor;
+        void main() {
+          vec4 prev = texture(glPrevious, glUV) * decay;
+          
+          // Add new content at mouse position
+          float dist = length(glCoord - glMouse.xy);
+          float brush = smoothstep(0.05, 0.02, dist) * glMouse.z;
+          
+          // Add some automatic movement
+          vec2 autoPos = vec2(0.5 + 0.3 * sin(glTime * 0.03), 
+                              0.5 + 0.3 * cos(glTime * 0.05));
+          float autoDist = length(glCoord - autoPos);
+          float autoBrush = smoothstep(0.08, 0.05, autoDist) * 0.5;
+          
+          vec3 newColor = vec3(brush + autoBrush * 0.5, autoBrush, brush * 0.8);
+          fragColor = prev + vec4(newColor, max(brush, autoBrush));
+        }
+      </feedback-node>
+    </minigl-canvas>
+
+    <div class="controls">
+      Decay: <input type="range" min="0.9" max="0.995" step="0.005" value="0.98" 
+                    onchange="updateFeedbackDecay(this.value)">
+      <button onclick="clearFeedback()">Clear</button>
+    </div>
+
+    <div class="source-code">
+      <pre>&lt;feedback-node id="trails" uniforms='{"decay": 0.98}'&gt;
+  /* Feedback shader with glPrevious texture */
+&lt;/feedback-node&gt;</pre>
+    </div>
+  </div>
+
+  <!-- Demo 5: Particles -->
+  <div class="demo-section">
+    <div class="demo-title">5. Particle System</div>
+    <div class="demo-description">
+      Built-in particle system with mouse interaction.
+    </div>
+
+    <minigl-canvas output="particles">
+      <particles-node id="particles" 
+                      count="5000" 
+                      size="0.008" 
+                      gravity="0.0008" 
+                      damping="0.96">
+      </particles-node>
+    </minigl-canvas>
+
+    <div class="controls">
+      Count: <input type="range" min="1000" max="10000" step="500" value="5000" 
+                    onchange="updateParticleCount(this.value)">
+      <span id="particle-count">5000</span>
+      <br>
+      Size: <input type="range" min="0.002" max="0.02" step="0.001" value="0.008" 
+                   onchange="updateParticleSize(this.value)">
+      <span id="particle-size">0.008</span>
+    </div>
+
+    <div class="source-code">
+      <pre>&lt;particles-node id="particles" 
+                count="5000" 
+                size="0.008" 
+                gravity="0.0008" 
+                damping="0.96"&gt;
+&lt;/particles-node&gt;</pre>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import the web components
+    import miniGLComponents from '../lib/miniGL-components/index.js';
+
+    // Check WebGL2 support
+    if (!miniGLComponents.isWebGL2Supported()) {
+      document.getElementById('webgl-check').style.display = 'block';
+    }
+
+    // Demo control functions
+    window.changeBlendMode = function(mode) {
+      const blendNode = document.querySelector('#blend');
+      if (blendNode) {
+        blendNode.mode = mode;
+        blendNode.getCanvas().refreshGraph();
+      }
+    };
+
+    window.changeOpacity = function(opacity) {
+      const blendNode = document.querySelector('#blend');
+      if (blendNode) {
+        blendNode.opacity = parseFloat(opacity);
+        // Update via the canvas method for real-time updates
+        blendNode.getCanvas().updateNodeUniform('blend', 'opacity', parseFloat(opacity));
+      }
+    };
+
+    window.updateFeedbackDecay = function(decay) {
+      const canvas = document.querySelector('minigl-canvas[output="trails"]');
+      if (canvas) {
+        canvas.updateNodeUniform('trails', 'decay', parseFloat(decay));
+      }
+    };
+
+    window.clearFeedback = function() {
+      const canvas = document.querySelector('minigl-canvas[output="trails"]');
+      if (canvas) {
+        // Quick hack to clear: set decay to 0 for one frame, then restore
+        canvas.updateNodeUniform('trails', 'decay', 0.0);
+        setTimeout(() => {
+          const slider = document.querySelector('input[onchange*="updateFeedbackDecay"]');
+          canvas.updateNodeUniform('trails', 'decay', parseFloat(slider.value));
+        }, 50);
+      }
+    };
+
+    window.updateParticleCount = function(count) {
+      const particles = document.querySelector('#particles');
+      if (particles) {
+        particles.count = parseInt(count);
+        document.getElementById('particle-count').textContent = count;
+        particles.getCanvas().refreshGraph();
+      }
+    };
+
+    window.updateParticleSize = function(size) {
+      const particles = document.querySelector('#particles');
+      if (particles) {
+        particles.size = parseFloat(size);
+        document.getElementById('particle-size').textContent = size;
+        // This should update in real-time without refreshing the graph
+        const canvas = particles.getCanvas();
+        if (canvas) {
+          const node = canvas.getNode('particles');
+          if (node && node.setSize) {
+            node.setSize(parseFloat(size));
+          }
+        }
+      }
+    };
+
+    // Add event listeners for when graphs are ready
+    document.addEventListener('minigl-ready', (e) => {
+      console.log('miniGL canvas ready:', e.detail);
+    });
+
+    document.addEventListener('minigl-error', (e) => {
+      console.error('miniGL error:', e.detail);
+    });
+  </script>
+</body>
+</html> 

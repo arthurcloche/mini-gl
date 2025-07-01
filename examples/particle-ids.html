@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Particle ID Effects</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #000;
+      color: #fff;
+      font-family: monospace;
+    }
+    
+    canvas {
+      border: 1px solid #333;
+      display: block;
+      margin: 20px 0;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .control label {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    input[type="range"] {
+      width: 120px;
+    }
+    
+    button {
+      background: #333;
+      color: #fff;
+      border: 1px solid #666;
+      padding: 8px 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background: #444;
+    }
+    
+    button.active {
+      background: #555;
+      border-color: #888;
+    }
+
+    .info {
+      background: #111;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 10px 0;
+      border-left: 3px solid #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>🆔 Particle ID Effects</h1>
+  <p>Demonstrating creative uses of particle and vertex IDs</p>
+  
+  <div class="info">
+    <strong>Available IDs:</strong><br>
+    • <code>particleID</code>: Unique ID for each particle (0, 1, 2, 3, ...)<br>
+    • <code>quadVertexID</code>: Vertex ID within each quad (0-5 for the 6 vertices)
+  </div>
+  
+  <div>
+    <button id="colors" class="active">Per-Particle Colors</button>
+    <button id="timing">Staggered Timing</button>
+    <button id="shapes">Unique Shapes</button>
+    <button id="patterns">ID Patterns</button>
+  </div>
+  
+  <canvas id="particles" width="800" height="600"></canvas>
+  
+  <div class="controls">
+    <div class="control">
+      <label>Particle Count</label>
+      <input type="range" id="count" min="500" max="2000" step="100" value="1000">
+    </div>
+    <div class="control">
+      <label>Effect Intensity</label>
+      <input type="range" id="intensity" min="0" max="3" step="0.1" value="1.0">
+    </div>
+    <div class="control">
+      <label>Spawn Rate</label>
+      <input type="range" id="spawnRate" min="0.01" max="0.1" step="0.01" value="0.05">
+    </div>
+  </div>
+
+  <script type="module">
+    import miniGL from '../lib/miniGL/miniGL.js';
+
+    const minigl = new miniGL('#particles');
+    let currentDemo = 'colors';
+    let particles = null;
+    let renderParticles = null;
+    
+    const effects = {
+      colors: `#version 300 es
+        precision highp float;
+        
+        in vec2 particleUV;
+        in vec4 particleColor;
+        in vec2 particleVel;
+        in float particleLife;
+        in float particleID;
+        in float quadVertexID;
+        
+        uniform float glTime;
+        uniform float intensity;
+        
+        out vec4 fragColor;
+        
+        // HSV to RGB conversion
+        vec3 hsv2rgb(vec3 c) {
+          vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+          vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+          return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+        }
+        
+        void main() {
+          if (particleLife < 0.5) discard;
+          
+          // Create circular particle
+          vec2 center = particleUV - 0.5;
+          float dist = length(center) * 2.0;
+          float alpha = 1.0 - smoothstep(0.3, 0.8, dist);
+          
+          // Use particle ID for unique hue
+          float hue = fract(particleID * 0.618033988749); // Golden ratio for good distribution
+          float sat = 0.8 + 0.2 * sin(particleID * 0.1);
+          float val = 0.9 + 0.1 * cos(particleID * 0.2);
+          
+          // Add velocity-based hue shift
+          float speed = length(particleVel);
+          hue += speed * intensity * 0.5;
+          
+          vec3 color = hsv2rgb(vec3(hue, sat, val));
+          
+          fragColor = vec4(color, alpha * particleColor.a);
+        }`,
+
+      timing: `#version 300 es
+        precision highp float;
+        
+        in vec2 particleUV;
+        in vec4 particleColor;
+        in vec2 particleVel;
+        in float particleLife;
+        in float particleID;
+        in float quadVertexID;
+        
+        uniform float glTime;
+        uniform float intensity;
+        
+        out vec4 fragColor;
+        
+        void main() {
+          if (particleLife < 0.5) discard;
+          
+          // Staggered animation timing based on particle ID
+          float particlePhase = particleID * 0.1 * intensity;
+          float animTime = glTime + particlePhase;
+          
+          // Pulsing effect with unique timing
+          float pulse = sin(animTime * 3.0) * 0.5 + 0.5;
+          float scale = 0.5 + pulse * 0.5;
+          
+          // Create scaled circular particle
+          vec2 center = (particleUV - 0.5) / scale;
+          float dist = length(center) * 2.0;
+          float alpha = 1.0 - smoothstep(0.3, 0.8, dist);
+          
+          // Color based on phase
+          float colorPhase = fract(animTime * 0.1);
+          vec3 color1 = vec3(1.0, 0.3, 0.5);
+          vec3 color2 = vec3(0.3, 0.8, 1.0);
+          vec3 color = mix(color1, color2, colorPhase);
+          
+          // Brightness based on pulse
+          color *= 0.8 + pulse * 0.4;
+          
+          fragColor = vec4(color, alpha * particleColor.a);
+        }`,
+
+      shapes: `#version 300 es
+        precision highp float;
+        
+        in vec2 particleUV;
+        in vec4 particleColor;
+        in vec2 particleVel;
+        in float particleLife;
+        in float particleID;
+        in float quadVertexID;
+        
+        uniform float glTime;
+        uniform float intensity;
+        
+        out vec4 fragColor;
+        
+        // SDF functions
+        float sdfCircle(vec2 p, float r) {
+          return length(p) - r;
+        }
+        
+        float sdfBox(vec2 p, vec2 b) {
+          vec2 d = abs(p) - b;
+          return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+        }
+        
+        float sdfTriangle(vec2 p) {
+          const float k = sqrt(3.0);
+          p.x = abs(p.x) - 0.5;
+          p.y = p.y + 0.5/k;
+          if( p.x + k*p.y > 0.0 ) p = vec2(p.x - k*p.y, -k*p.x - p.y)/2.0;
+          p.x -= clamp( p.x, -1.0, 0.0 );
+          return -length(p)*sign(p.y);
+        }
+        
+        void main() {
+          if (particleLife < 0.5) discard;
+          
+          vec2 uv = particleUV - 0.5;
+          
+          // Choose shape based on particle ID
+          float shapeIndex = mod(particleID, 3.0);
+          float shape;
+          
+          if (shapeIndex < 1.0) {
+            // Circle
+            shape = sdfCircle(uv, 0.3);
+          } else if (shapeIndex < 2.0) {
+            // Square
+            shape = sdfBox(uv, vec2(0.25));
+          } else {
+            // Triangle
+            shape = sdfTriangle(uv * 2.0) / 2.0;
+          }
+          
+          // Create outline
+          float alpha = 1.0 - smoothstep(-0.02, 0.02, shape);
+          
+          // Color based on shape and velocity
+          vec3 colors[3];
+          colors[0] = vec3(1.0, 0.3, 0.5); // Circle - Pink
+          colors[1] = vec3(0.3, 1.0, 0.5); // Square - Green  
+          colors[2] = vec3(0.5, 0.3, 1.0); // Triangle - Blue
+          
+          vec3 baseColor = colors[int(shapeIndex)];
+          float speed = length(particleVel);
+          vec3 finalColor = baseColor * (0.8 + speed * intensity * 2.0);
+          
+          fragColor = vec4(finalColor, alpha * particleColor.a);
+        }`,
+
+      patterns: `#version 300 es
+        precision highp float;
+        
+        in vec2 particleUV;
+        in vec4 particleColor;
+        in vec2 particleVel;
+        in float particleLife;
+        in float particleID;
+        in float quadVertexID;
+        
+        uniform float glTime;
+        uniform float intensity;
+        
+        out vec4 fragColor;
+        
+        void main() {
+          if (particleLife < 0.5) discard;
+          
+          // Create patterns based on particle ID modulo operations
+          float gridX = mod(particleID, 10.0);
+          float gridY = floor(particleID / 10.0);
+          
+          // Checkerboard pattern
+          float checker = mod(gridX + gridY, 2.0);
+          
+          // Wave pattern
+          float wave = sin(gridX * 0.5 + glTime) * sin(gridY * 0.3 + glTime * 0.7);
+          
+          // Create circular particle
+          vec2 center = particleUV - 0.5;
+          float dist = length(center) * 2.0;
+          float alpha = 1.0 - smoothstep(0.3, 0.8, dist);
+          
+          // Color based on patterns
+          vec3 color1 = vec3(1.0, 0.2, 0.4); // Red
+          vec3 color2 = vec3(0.2, 0.6, 1.0); // Blue
+          vec3 baseColor = mix(color1, color2, checker);
+          
+          // Modulate with wave
+          float brightness = 0.7 + wave * 0.3 * intensity;
+          vec3 finalColor = baseColor * brightness;
+          
+          // Add vertex ID effect for extra detail
+          float vertexEffect = sin(quadVertexID * 1.047) * 0.1; // 60 degrees apart
+          finalColor += vertexEffect * intensity * 0.5;
+          
+          fragColor = vec4(finalColor, alpha * particleColor.a);
+        }`
+    };
+
+    function setupDemo(demoType) {
+      currentDemo = demoType;
+      
+      // Create particles
+      particles = minigl.particles({
+        count: parseInt(document.getElementById('count').value),
+        size: 0.015,
+      });
+      
+      // Create rendering with ID-based effects
+      renderParticles = particles.particle(effects[demoType], {
+        intensity: parseFloat(document.getElementById('intensity').value)
+      }, {
+        quadSize: 0.08
+      });
+      
+      minigl.output(renderParticles);
+    }
+
+    // Setup initial demo
+    setupDemo('colors');
+
+    // Demo selection
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setupDemo(btn.id);
+      });
+    });
+
+    // Controls
+    document.getElementById('intensity').addEventListener('input', (e) => {
+      if (renderParticles) renderParticles.updateUniform('intensity', parseFloat(e.target.value));
+    });
+
+    document.getElementById('count').addEventListener('input', (e) => {
+      setupDemo(currentDemo); // Recreate with new count
+    });
+
+    document.getElementById('spawnRate').addEventListener('input', (e) => {
+      if (particles) particles.updateUniform('spawnRate', parseFloat(e.target.value));
+    });
+
+    function animate() {
+      minigl.render();
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html> 
