@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluid Simulation v2 Test</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: #000; 
+            overflow: hidden;
+        }
+        canvas { 
+            display: block; 
+            width: 100vw; 
+            height: 100vh; 
+            cursor: crosshair;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .controls label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .controls input {
+            width: 100px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="controls">
+        <label>Curl: <input type="range" id="curl" min="0" max="50" value="30" step="1"></label>
+        <label>Pressure: <input type="range" id="pressure" min="0" max="2" value="0.8" step="0.1"></label>
+        <label>Splat Radius: <input type="range" id="splatRadius" min="0.1" max="1" value="0.25" step="0.05"></label>
+        <label>Shading: <input type="checkbox" id="shading" checked></label>
+        <div style="margin-top: 10px;">
+            <small>Move mouse to interact with fluid</small>
+        </div>
+    </div>
+
+    <script type="module">
+        import miniGL from "../../../lib/miniGL/miniGL.js";
+        import { FluidSimulationNode } from './minigl-fluid-v2.js';
+
+        const canvas = document.getElementById('canvas');
+        const gl = new miniGL(canvas);
+        
+        // Create fluid simulation
+        const fluid = FluidSimulationNode(gl, {
+            simResolution: 128,
+            dyeResolution: 1440,
+            densityDissipation: 3.5,
+            velocityDissipation: 2,
+            pressure: 0.1,
+            pressureIterations: 20,
+            curl: 3,
+            splatRadius: 0.2,
+            splatForce: 6000,
+            shading: true
+        });
+
+        // Start the render loop
+        gl.render();
+
+        // Mouse interaction
+        let isMouseDown = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left) / rect.width,
+                y: 1.0 - (e.clientY - rect.top) / rect.height
+            };
+        }
+
+        function generateColor() {
+            const h = Math.random();
+            const s = 1.0;
+            const v = 1.0;
+            
+            const c = v * s;
+            const x = c * (1 - Math.abs(((h * 6) % 2) - 1));
+            const m = v - c;
+            
+            let r, g, b;
+            if (h < 1/6) { r = c; g = x; b = 0; }
+            else if (h < 2/6) { r = x; g = c; b = 0; }
+            else if (h < 3/6) { r = 0; g = c; b = x; }
+            else if (h < 4/6) { r = 0; g = x; b = c; }
+            else if (h < 5/6) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+            
+            return [r + m, g + m, b + m];
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            const pos = getMousePos(e);
+            lastMouseX = pos.x;
+            lastMouseY = pos.y;
+            
+            // Add a click splat
+            const color = generateColor();
+            color[0] *= 10.0;
+            color[1] *= 10.0;
+            color[2] *= 10.0;
+            const dx = 10 * (Math.random() - 0.5);
+            const dy = 30 * (Math.random() - 0.5);
+            fluid.addSplat(pos.x, pos.y, dx, dy, color);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const pos = getMousePos(e);
+            
+            if (isMouseDown) {
+                const dx = (pos.x - lastMouseX) * fluid.splatForce;
+                const dy = (pos.y - lastMouseY) * fluid.splatForce;
+                const color = generateColor();
+                color[0] *= 0.15;
+                color[1] *= 0.15;
+                color[2] *= 0.15;
+                
+                fluid.addSplat(pos.x, pos.y, dx, dy, color);
+            }
+            
+            lastMouseX = pos.x;
+            lastMouseY = pos.y;
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const pos = getMousePos(touch);
+            lastMouseX = pos.x;
+            lastMouseY = pos.y;
+            
+            const color = generateColor();
+            const dx = 1000 * (Math.random() - 0.5);
+            const dy = 1000 * (Math.random() - 0.5);
+            fluid.addSplat(pos.x, pos.y, dx, dy, color);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const pos = getMousePos(touch);
+            
+            const dx = (pos.x - lastMouseX) * 1000;
+            const dy = (pos.y - lastMouseY) * 1000;
+            const color = generateColor();
+            
+            fluid.addSplat(pos.x, pos.y, dx, dy, color);
+            
+            lastMouseX = pos.x;
+            lastMouseY = pos.y;
+        });
+
+        // Controls
+        document.getElementById('curl').addEventListener('input', (e) => {
+            fluid.updateUniform('curl', parseFloat(e.target.value));
+        });
+
+        document.getElementById('pressure').addEventListener('input', (e) => {
+            fluid.updateUniform('pressure', parseFloat(e.target.value));
+        });
+
+        document.getElementById('splatRadius').addEventListener('input', (e) => {
+            fluid.updateUniform('splatRadius', parseFloat(e.target.value));
+        });
+
+        document.getElementById('shading').addEventListener('change', (e) => {
+            fluid.updateUniform('shading', e.target.checked);
+        });
+
+        // Animation loop
+        let lastTime = 0;
+        function animate(currentTime) {
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            
+            // Step the simulation
+            fluid.step(Math.min(deltaTime, 0.016));
+            
+            // Render
+            gl.render();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
