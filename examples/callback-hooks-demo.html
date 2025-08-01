@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>miniGL - Callback Hooks Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .canvas-container {
+            width: 100%;
+            height: 400px;
+            margin: 20px 0;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .info-panel {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        .info-panel p {
+            margin: 5px 0;
+            font-family: monospace;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>miniGL - Callback Hooks Demo</h1>
+        <p>This demo shows how to use miniGL's callback hooks for frame updates and resize events.</p>
+        
+        <div class="canvas-container" id="canvas-container"></div>
+        
+        <div class="info">
+            <div class="info-panel">
+                <h3>Frame Updates</h3>
+                <p>Frame Count: <span id="frameCount">0</span></p>
+                <p>FPS: <span id="fps">0</span></p>
+                <p>Time: <span id="time">0</span></p>
+            </div>
+            
+            <div class="info-panel">
+                <h3>Resize Events</h3>
+                <p>Canvas Size: <span id="canvasSize">0x0</span></p>
+                <p>Resize Count: <span id="resizeCount">0</span></p>
+                <p>Aspect Ratio: <span id="aspectRatio">0</span></p>
+            </div>
+            
+            <div class="info-panel">
+                <h3>Animation State</h3>
+                <p>Status: <span id="animStatus">Stopped</span></p>
+                <p>Start Count: <span id="startCount">0</span></p>
+                <p>Stop Count: <span id="stopCount">0</span></p>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="startBtn">Start Animation</button>
+            <button id="stopBtn">Stop Animation</button>
+            <button id="resizeBtn">Trigger Resize</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import miniGL from '../lib/miniGL/miniGL.js';
+
+        // Initialize miniGL
+        const mg = new miniGL('#canvas-container');
+
+        // Counter variables
+        let frameCount = 0;
+        let resizeCount = 0;
+        let startCount = 0;
+        let stopCount = 0;
+        let lastTime = 0;
+        let fps = 0;
+
+        // Create a simple animated shader
+        const animatedShader = mg.shader(`#version 300 es
+            precision highp float;
+            
+            uniform float glTime;
+            uniform vec2 glResolution;
+            uniform vec3 glMouse;
+            uniform vec2 glPixel;
+            uniform float glRatio;
+            
+            in vec2 glUV;
+            out vec4 fragColor;
+            
+            void main() {
+                vec2 center = vec2(0.5);
+                vec2 pos = glUV - center;
+                
+                // Create animated rings
+                float dist = length(pos);
+                float rings = sin(dist * 20.0 - glTime * 0.1) * 0.5 + 0.5;
+                
+                // Add mouse interaction
+                vec2 mousePos = glMouse.xy;
+                float mouseDist = distance(glUV, mousePos);
+                float mouseEffect = exp(-mouseDist * 8.0);
+                
+                // Color based on position and time
+                vec3 color = vec3(
+                    sin(glTime * 0.05 + pos.x * 3.0) * 0.5 + 0.5,
+                    sin(glTime * 0.07 + pos.y * 3.0) * 0.5 + 0.5,
+                    sin(glTime * 0.03 + dist * 5.0) * 0.5 + 0.5
+                );
+                
+                // Combine effects
+                color = mix(color, vec3(1.0), mouseEffect * 0.3);
+                color *= rings;
+                
+                fragColor = vec4(color, 1.0);
+            }
+        `);
+
+        // Set output
+        mg.output(animatedShader);
+
+        // Set up frame callback
+        mg.onFrame((currentTime, timestamp) => {
+            frameCount++;
+            
+            // Calculate FPS
+            if (timestamp - lastTime >= 1000) {
+                fps = Math.round(frameCount / ((timestamp - lastTime) / 1000));
+                frameCount = 0;
+                lastTime = timestamp;
+            }
+            
+            // Update UI
+            document.getElementById('frameCount').textContent = frameCount;
+            document.getElementById('fps').textContent = fps;
+            document.getElementById('time').textContent = Math.round(currentTime);
+        });
+
+        // Set up resize callback
+        mg.onResize((width, height) => {
+            resizeCount++;
+            const aspectRatio = (width / height).toFixed(3);
+            
+            // Update UI
+            document.getElementById('canvasSize').textContent = `${width}x${height}`;
+            document.getElementById('resizeCount').textContent = resizeCount;
+            document.getElementById('aspectRatio').textContent = aspectRatio;
+            
+            console.log(`Canvas resized to: ${width}x${height}`);
+        });
+
+        // Set up start callback
+        mg.onStart(() => {
+            startCount++;
+            document.getElementById('animStatus').textContent = 'Running';
+            document.getElementById('startCount').textContent = startCount;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            
+            console.log('Animation started');
+        });
+
+        // Set up stop callback
+        mg.onStop(() => {
+            stopCount++;
+            document.getElementById('animStatus').textContent = 'Stopped';
+            document.getElementById('stopCount').textContent = stopCount;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            
+            console.log('Animation stopped');
+        });
+
+        // Control buttons
+        document.getElementById('startBtn').addEventListener('click', () => {
+            mg.start();
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            mg.stop();
+        });
+
+        document.getElementById('resizeBtn').addEventListener('click', () => {
+            // Trigger a resize by changing the container size
+            const container = document.getElementById('canvas-container');
+            const currentHeight = container.offsetHeight;
+            const newHeight = currentHeight === 400 ? 300 : 400;
+            container.style.height = newHeight + 'px';
+            
+            // Force a resize event
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        });
+
+        // Initialize UI with current state
+        document.getElementById('animStatus').textContent = mg.isRunning() ? 'Running' : 'Stopped';
+        document.getElementById('startBtn').disabled = mg.isRunning();
+        document.getElementById('stopBtn').disabled = !mg.isRunning();
+        
+        console.log('miniGL Callback Hooks Demo loaded');
+    </script>
+</body>
+</html> 

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>miniGL Fluid Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        .container{
+            width: 100vw;
+            height : 100vh;
+            background-color: #45a049;
+        }
+        #fluidCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            z-index: -10;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        
+        .info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .info h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .info p {
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+        }
+        
+        .controls button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .controls button:hover {
+            background: #45a049;
+        }
+        
+        .controls input[type="range"] {
+            width: 80px;
+            margin: 0 5px;
+        }
+        
+        .controls label {
+            color: white;
+            font-size: 12px;
+            display: block;
+            margin: 5px 0;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+   
+ 
+    <div class="controls">
+        <label>
+            Viscosity: <input type="range" id="viscosity" min="0" max="0.1" step="0.001" value="0.02">
+            <span id="viscosityValue">0.02</span>
+        </label>
+        <label>
+            Velocity Fade: <input type="range" id="velFade" min="0.9" max="1.0" step="0.001" value="0.98">
+            <span id="velFadeValue">0.98</span>
+        </label>
+        <label>
+            Color Fade: <input type="range" id="colorFade" min="0.9" max="1.0" step="0.001" value="0.99">
+            <span id="colorFadeValue">0.99</span>
+        </label>
+        <button id="resetBtn">Reset</button>
+    </div>
+    <div class="container">
+        <canvas id="fluidCanvas"></canvas>
+    </div>
+    <script type="module">
+        // Properly size the canvas before miniGL initializes
+        // const canvas = document.getElementById('fluidCanvas');
+        // canvas.width = window.innerWidth;
+        // canvas.height = window.innerHeight;
+        
+        // // Handle window resize
+        // window.addEventListener('resize', () => {
+        //     canvas.width = window.innerWidth;
+        //     canvas.height = window.innerHeight;
+        // });
+
+        import { params, velocityField, colorField } from './minigl-fluid.js';
+
+        // Get control elements
+        const viscositySlider = document.getElementById('viscosity');
+        const velFadeSlider = document.getElementById('velFade');
+        const colorFadeSlider = document.getElementById('colorFade');
+        const resetBtn = document.getElementById('resetBtn');
+        
+        const viscosityValue = document.getElementById('viscosityValue');
+        const velFadeValue = document.getElementById('velFadeValue');
+        const colorFadeValue = document.getElementById('colorFadeValue');
+
+        // Update controls
+        function updateControls() {
+            viscositySlider.value = params.viscosity;
+            velFadeSlider.value = params.velocityDissipation;
+            colorFadeSlider.value = params.colorDissipation;
+            
+            viscosityValue.textContent = params.viscosity.toFixed(3);
+            velFadeValue.textContent = params.velocityDissipation.toFixed(3);
+            colorFadeValue.textContent = params.colorDissipation.toFixed(3);
+        }
+
+        // Control event listeners
+        viscositySlider.addEventListener('input', (e) => {
+            params.viscosity = parseFloat(e.target.value);
+            velocityField.updateUniform('u_viscosity', params.viscosity);
+            viscosityValue.textContent = params.viscosity.toFixed(3);
+        });
+
+        velFadeSlider.addEventListener('input', (e) => {
+            params.velocityDissipation = parseFloat(e.target.value);
+            velocityField.updateUniform('u_dissipation', params.velocityDissipation);
+            velFadeValue.textContent = params.velocityDissipation.toFixed(3);
+        });
+
+        colorFadeSlider.addEventListener('input', (e) => {
+            params.colorDissipation = parseFloat(e.target.value);
+            colorField.updateUniform('u_dissipation', params.colorDissipation);
+            colorFadeValue.textContent = params.colorDissipation.toFixed(3);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            // Reset to default values
+            params.viscosity = 0.02;
+            params.velocityDissipation = 0.98;
+            params.colorDissipation = 0.99;
+            
+            velocityField.updateUniform('u_viscosity', params.viscosity);
+            velocityField.updateUniform('u_dissipation', params.velocityDissipation);
+            colorField.updateUniform('u_dissipation', params.colorDissipation);
+            
+            updateControls();
+        });
+
+        // Initialize controls
+        updateControls();
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'r':
+                case 'R':
+                    resetBtn.click();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    // Toggle auto mode (this would need to be implemented in the simulation)
+                    break;
+            }
+        });
+
+        console.log('miniGL Fluid Simulation Demo loaded');
+        console.log('Controls: Mouse/touch to interact, R to reset');
+    </script>
+</body>
+</html> 

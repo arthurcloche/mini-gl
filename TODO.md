@@ -1,6 +1,6 @@
 # TO DO
-[ ] Create miniNode Class with retained textures and uniforms to fit within the pattern.
-[ ] Add onBeforeCompile hook
+[ ] Fix extension issues on iPhone
+[ ] Add onBeforeCompile hook + hook to vertex shader
 [ ] Add 3D texture for gen envmap
 [x] Remove chunks dependencies 
 
@@ -38,7 +38,11 @@ Fast fluids 2 : https://29a.ch/2012/12/16/webgl-fluid-simulation
 Stable fuild : https://mofu-dev.com/en/blog/stable-fluids/
 Fast fluids 3 : https://github.com/amsXYZ/three-fluid-sim
 
+stack blur : https://github.com/flozz/StackBlur/blob/master/src/stackblur.js
+
+
 paper shaders : https://github.com/paper-design/shaders
+texture displacement fluids : https://blog.olivierlarose.com/demos/ripple-shader + https://www.youtube.com/watch?v=vWAci72MtME
 
 Inspo : 
 https://github.com/regl-project/regl
