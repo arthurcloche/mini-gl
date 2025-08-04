@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>miniGL Image Test</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: white;
+            font-family: monospace;
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid #333;
+            display: block;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>miniGL Image → Shader Test</h1>
+    <canvas id="canvas" width="512" height="512"></canvas>
+    <div id="status"></div>
+    
+    <script type="module">
+        import miniGL from '../lib/miniGL/miniGL.js';
+        
+        const status = document.getElementById('status');
+        const canvas = document.getElementById('canvas');
+        
+        try {
+            // Create miniGL instance
+            const gl = new miniGL(canvas, { fps: 60 });
+            status.innerHTML += '<p>✓ Created miniGL instance</p>';
+            
+            // Create image node
+            const image = gl.image('https://picsum.photos/512/512');
+            status.innerHTML += '<p>✓ Created image node</p>';
+            
+            // Create blur shader
+            const blur = gl.shader(`#version 300 es
+                precision highp float;
+                
+                uniform sampler2D glTexture;
+                uniform vec2 glResolution;
+                uniform float uRadius;
+                
+                in vec2 glUV;
+                out vec4 fragColor;
+                
+                void main() {
+                    vec2 texelSize = 1.0 / glResolution;
+                    vec4 color = vec4(0.0);
+                    float radius = 2.0;
+                    
+                    for(float x = -radius; x <= radius; x += 1.0) {
+                        for(float y = -radius; y <= radius; y += 1.0) {
+                            color += texture(glTexture, glUV + vec2(x, y) * texelSize);
+                        }
+                    }
+                    
+                    float samples = (radius * 2.0 + 1.0) * (radius * 2.0 + 1.0);
+                    fragColor = color / samples;
+                }
+            `, { uRadius: 2.0 });
+            status.innerHTML += '<p>✓ Created blur shader</p>';
+            
+            // Connect image to shader
+            blur.connect('glTexture', image);
+            status.innerHTML += '<p>✓ Connected image to shader</p>';
+            
+            // Set output
+            gl.output(blur);
+            status.innerHTML += '<p>✓ Set output</p>';
+            
+            // Start rendering
+            gl.render();
+            status.innerHTML += '<p>✓ Started render loop</p>';
+            
+        } catch (error) {
+            status.innerHTML += `<p style="color: red;">✗ Error: ${error.message}</p>`;
+            console.error(error);
+        }
+    </script>
+</body>
+</html>

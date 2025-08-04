@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Test Pattern</title>
+</head>
+<body>
+    <canvas id="canvas" width="512" height="512"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Create a gradient pattern
+        const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+        gradient.addColorStop(0, '#ff006e');
+        gradient.addColorStop(0.5, '#8338ec');
+        gradient.addColorStop(1, '#3a86ff');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 512, 512);
+        
+        // Add some circles
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.arc(
+                Math.random() * 512,
+                Math.random() * 512,
+                Math.random() * 100 + 50,
+                0,
+                Math.PI * 2
+            );
+            ctx.fillStyle = `hsla(${Math.random() * 360}, 70%, 60%, 0.5)`;
+            ctx.fill();
+        }
+        
+        // Convert to blob and download
+        canvas.toBlob(function(blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'test-pattern.png';
+            a.click();
+        });
+    </script>
+</body>
+</html>

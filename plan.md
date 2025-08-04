@@ -4,338 +4,225 @@
 
 This document outlines the comprehensive plan for building a visual node-graph editor for the miniGL fragment shader library. The editor will provide an intuitive interface for creating, connecting, and managing shader nodes while maintaining real-time preview capabilities.
 
-## Core Requirements & Features
+## Current Status (As of January 2025)
 
-### Essential Features
-- **Visual Node Creation**: Drag-and-drop node palette with all miniGL node types
-- **Connection System**: Intuitive input/output connection with type validation
-- **Real-time Preview**: Live canvas showing the current graph output
-- **Property Editor**: Dynamic UI for editing node uniforms and parameters
-- **Graph Navigation**: Pan, zoom, minimap for large graphs
+### ✅ Completed
+1. **UI Implementation**
+   - Modular ES6 architecture with UIManager, NodeGraph, PropertiesPanel, NodePalette
+   - SVG-based node graph visualization with drag functionality
+   - 3-column layout matching prototype design
+   - Dynamic property panels with contextual UI per node type
+   - CSS styling matching dark theme from prototype
 
-### Advanced Features
-- **Save/Load**: JSON serialization of complete graphs
-- **Undo/Redo**: Full operation history with state management
-- **Node Grouping**: MiniNode creation from selected subgraphs
-- **Live Coding**: Inline shader editor with syntax highlighting
-- **Performance Monitoring**: Frame rate and GPU usage indicators
+2. **miniGL Integration**
+   - MiniGLBridge module handling editor ↔ miniGL communication
+   - Fixed import paths and module loading
+   - Added missing render() method to miniGL library
+   - Fixed shader compilation issues (GLSL ES 3.00 compatibility)
+   - Proper uniform naming conventions (glTexture, glPrevious)
 
-## Integration Strategy
+3. **Basic Functionality**
+   - Node creation with drag-and-drop from palette
+   - Node selection and property editing
+   - Default scene with texture and blur shader
+   - Real-time preview rendering
+   - Export graph as JSON
 
-### Editor ↔ miniGL Integration
-- **Bidirectional Sync**: Editor creates/modifies actual miniGL nodes
-- **Event System**: Listen to miniGL graph changes for live updates
-- **Proxy Layer**: Editor manipulates graph through safe abstraction
-- **Hot Reloading**: Real-time shader compilation and error feedback
+### 🚧 Current Issues & Next Steps
 
-### Data Flow
+#### Immediate Priority: Fix Node Graph Functionality
+1. **Connection System**
+   - Visual connections not rendering between nodes
+   - Need to implement connection dragging UI
+   - Validate connection compatibility (input/output types)
+   - Update miniGL graph when connections change
+
+2. **Node Execution**
+   - Ensure nodes are properly connected in miniGL
+   - Fix data flow from texture → shader → output
+   - Implement proper output node designation
+   - Debug why blur effect isn't showing
+
+3. **Property Updates**
+   - Ensure uniform changes propagate to miniGL nodes
+   - Fix texture URL updates
+   - Implement shader code editing
+   - Add real-time parameter adjustments
+
+#### Phase 1: Core Functionality (Week 1)
+- [ ] Fix connection rendering in NodeGraph component
+- [ ] Implement connection dragging (mousedown on output → mousemove → mouseup on input)
+- [ ] Add connection validation (type checking)
+- [ ] Ensure miniGL nodes are properly connected when visual connections are made
+- [ ] Fix output node designation and rendering
+- [ ] Test data flow: Texture → Shader → Output
+- [ ] Add visual feedback for active connections
+
+#### Phase 2: Enhanced Editing (Week 2)
+- [ ] Multi-node selection with Shift/Cmd click
+- [ ] Delete nodes and connections (Delete key)
+- [ ] Copy/paste functionality (Cmd+C/V)
+- [ ] Undo/redo system (Cmd+Z/Shift+Cmd+Z)
+- [ ] Node alignment and snapping
+- [ ] Connection rerouting
+
+#### Phase 3: Advanced Features (Week 3)
+- [ ] Shader editor modal with syntax highlighting
+- [ ] Live shader compilation with error reporting
+- [ ] More node types (Video, Canvas, Feedback, Blend)
+- [ ] Custom uniform controls (color pickers, curve editors)
+- [ ] Node grouping and templates
+- [ ] Performance monitoring
+
+#### Phase 4: Polish & UX (Week 4)
+- [ ] Keyboard shortcuts documentation
+- [ ] Interactive tutorials
+- [ ] Example graphs and templates
+- [ ] Export to standalone code
+- [ ] Touch/mobile support
+- [ ] Accessibility improvements
+
+## Technical Debt & Refactoring
+
+### Immediate Needs
+1. **Connection Management**
+   ```javascript
+   // Current: connections stored but not visualized properly
+   // Need: Proper connection class with visual representation
+   class Connection {
+     constructor(fromNode, fromPort, toNode, toPort) {
+       this.id = generateId();
+       this.from = { node: fromNode, port: fromPort };
+       this.to = { node: toNode, port: toPort };
+       this.path = null; // SVG path element
+     }
+     
+     updatePath() {
+       // Calculate bezier curve between ports
+     }
+   }
+   ```
+
+2. **Event System**
+   - Current: Direct DOM manipulation
+   - Need: Proper event bus for decoupled components
+   - Implement node events: created, updated, deleted, connected
+
+3. **State Synchronization**
+   - Current: EditorState and miniGL can get out of sync
+   - Need: Single source of truth with proper update propagation
+   - Consider using Proxy for reactive updates
+
+### Architecture Improvements
+1. **Modularize NodeGraph.js**
+   - Extract Connection rendering
+   - Separate interaction handlers
+   - Create dedicated Port component
+
+2. **Improve Error Handling**
+   - Wrap miniGL operations in try-catch
+   - User-friendly error messages
+   - Fallback states for failed operations
+
+3. **Testing Infrastructure**
+   - Unit tests for graph operations
+   - Integration tests for miniGL bridge
+   - Visual regression tests for UI
+
+## Updated File Structure
 ```
-Editor Actions → Graph Commands → miniGL Nodes → WebGL Rendering → Canvas Preview
-     ↑                                                                      ↓
-   UI Updates ← Graph Events ← Node Changes ← Frame Updates ← Performance Monitor
-```
-
-## Proposed Architecture
-
-### Core Components
-
-#### 1. Editor Engine (`NodeGraphEditor`)
-```javascript
-class NodeGraphEditor {
-  constructor(canvas, options) {
-    this.minigl = new MiniGL(canvas);
-    this.graph = new EditorGraph();
-    this.viewport = new EditorViewport();
-    this.selection = new SelectionManager();
-    this.history = new UndoRedoManager();
-  }
-}
-```
-
-#### 2. Graph Management (`EditorGraph`)
-- Wraps miniGL graph with editor metadata
-- Handles node positioning, grouping, comments
-- Manages serialization/deserialization
-- Validates connections and types
-
-#### 3. UI Components
-- `NodeRenderer`: Visual node representation
-- `ConnectionRenderer`: Bezier curves for connections  
-- `PropertyPanel`: Dynamic uniform/parameter editing
-- `NodePalette`: Drag-and-drop node creation
-- `Toolbar`: Graph operations and tools
-
-#### 4. State Management
-- Command pattern for undo/redo operations
-- Observable graph state for reactive UI updates
-- Persistence layer for save/load functionality
-
-## Technology Stack
-
-### Framework Choice: Vanilla JS (Prototype) → React (Production)
-After prototyping, we've discovered:
-- **Vanilla JS** works excellently for rapid prototyping and understanding UX patterns
-- State management via global `EditorState` object proved the concept
-- Event delegation patterns work well for dynamic UI
-- **React** migration path is clear with established patterns
-
-### Rendering Strategy (Validated through Prototype)
-- **SVG**: Node graph rendering (better for interactive elements than Canvas2D)
-- **WebGL**: miniGL preview (separate canvas) 
-- **DOM**: Property panels, menus, overlays
-- **Hybrid Approach**: SVG nodes + DOM overlays provides best of both worlds
-
-### Key Libraries
-- **No external dependencies needed** for core functionality (proven in prototype)
-- **Monaco Editor**: For production shader editing (textarea works for prototype)
-- **State Management**: Custom EditorState pattern → Zustand for production
-- **No animation library needed**: CSS transitions sufficient
-
-## UX Principles (Discovered Through Prototype)
-
-### Layout & Information Architecture
-- **3-Column Layout [0.25, 0.5, 0.25]**: Optimal for workflow
-  - Left: Scene graph (read-only) + Node palette
-  - Center: Preview (top) + Node graph (bottom)
-  - Right: Properties + Settings/Export
-- **Contextual Property Panels**: Different UI for different node types
-- **Documentation as Default**: Show helpful info when no node selected
-
-### Visual Design Principles
-- **Color Coding**: Node types have distinct colors for titles and connection dots
-  - Input nodes (Texture/Video/Canvas): Light blue (#4fc3f7)
-  - Processing nodes (Shader): Orange (#ff8a65)
-  - Composition nodes (Blend): Purple (#ba68c8)
-  - Temporal nodes (Feedback): Green (#81c784)
-- **Minimal Dark Theme**: Reduces eye strain for long sessions
-- **Progressive Disclosure**: Advanced settings hidden by default
-
-### Interaction Patterns
-- **Drag Preview Rectangle**: Shows where node will land (not live position)
-- **Deferred Updates**: Node positions update on mouse release, not during drag
-- **Modal Overlays**: Shader editor covers only node graph, preserving preview
-- **Visual Feedback**: All actions provide immediate visual response
-
-### Performance Optimizations
-- **Event Delegation**: For dynamically created elements
-- **Selective Redraws**: Only update changed portions during interactions
-- **Connection Redraw**: Update only connections during node drag
-- **Debounced Updates**: For expensive operations
-
-## Core Features Implementation Plan
-
-### Phase 1: Basic Node Editor
-**Core Functionality:**
-- Canvas with pan/zoom/select operations
-- Node creation from palette (shader, texture, blend nodes)
-- Visual connection system with input/output ports
-- Basic property editing (sliders, color pickers, text inputs)
-- Real-time miniGL integration
-
-### Phase 2: Advanced Graph Features  
-**Enhanced Editing:**
-- Multi-selection and group operations
-- Copy/paste/duplicate functionality
-- Node search and filtering
-- Keyboard shortcuts for power users
-- Grid snapping and alignment tools
-
-### Phase 3: Shader Development Tools
-**Developer Experience:**
-- Inline shader editor with syntax highlighting
-- GLSL error reporting and debugging
-- Shader template library
-- Custom node creation from shaders
-- Uniform introspection and auto-UI generation
-
-## Advanced Features Specification
-
-### State Management & Persistence
-
-#### Undo/Redo System
-- Command pattern implementation
-- Granular operation tracking (move, connect, edit property)
-- State snapshots for complex operations
-- Memory-efficient history management
-
-#### Serialization Format (Validated in Prototype)
-```json
-{
-  "version": "1.0",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "nodes": [
-    {
-      "id": "node_1234567890", 
-      "type": "Shader",
-      "name": "Blur Effect",
-      "position": {"x": 100, "y": 200},
-      "uniforms": {
-        "uRadius": {"type": "slider", "value": 2, "min": 0, "max": 10}
-      },
-      "shader": "fragment_code_here"
-    },
-    {
-      "id": "node_1234567891",
-      "type": "Texture",
-      "name": "Source Image",
-      "position": {"x": 50, "y": 100},
-      "url": "https://example.com/image.jpg",
-      "sizeMode": "cover"
-    }
-  ],
-  "connections": [
-    {"from": "node_1234567891", "to": "node_1234567890"}
-  ],
-  "outputNode": "node_1234567890",
-  "settings": {
-    "resolution": "512x512",
-    "loop": true,
-    "loopDuration": "4"
-  }
-}
-```
-
-### Performance & Optimization
-
-#### Real-time Features
-- Debounced property updates
-- Background shader compilation
-- Progressive node rendering for large graphs
-- FPS monitoring and performance warnings
-- Memory usage tracking
-
-#### Validation System
-- Type checking for connections
-- Circular dependency detection
-- Missing texture/asset warnings
-- Shader compilation error reporting
-
-## Implementation Roadmap
-
-### Milestone 1: Foundation (Week 1-2)
-**Deliverable:** Basic working editor with miniGL integration
-- Set up React project with required dependencies  
-- Implement core canvas with pan/zoom functionality
-- Create basic node rendering system
-- Establish miniGL bidirectional communication
-- Simple property editing interface
-
-### Milestone 2: Core Editor (Week 3-4) 
-**Deliverable:** Functional node graph editor
-- Complete node palette with all miniGL node types
-- Connection system with visual feedback
-- Real-time preview canvas integration
-- Basic save/load functionality
-- Property panels for common node types
-
-### Milestone 3: Advanced Features (Week 5-6)
-**Deliverable:** Production-ready editor
-- Undo/redo system implementation
-- Shader editor with syntax highlighting
-- Performance monitoring and optimization
-- Node grouping and MiniNode creation
-- Error handling and validation
-
-### Milestone 4: Polish & Extension (Week 7-8)
-**Deliverable:** Enhanced user experience
-- Keyboard shortcuts and power-user features
-- Template library and examples
-- Export functionality (images, videos, code)
-- Documentation and tutorials
-- Mobile/touch support considerations
-
-## Technical Considerations
-
-### Integration Points
-- **Editor Bridge**: Adapter layer between editor operations and miniGL graph
-- **Hot Reload**: Live shader compilation without breaking the pipeline  
-- **Type Safety**: Enforce miniGL connection rules in the visual editor
-- **Performance**: Separate update loops for editor UI vs. miniGL rendering
-
-### File Structure
-```
-minigl-editor/
+editor/
 ├── src/
-│   ├── components/        # React UI components
-│   ├── core/             # Editor engine and graph management
-│   ├── minigl-bridge/    # miniGL integration layer
-│   ├── serialization/    # Save/load functionality  
-│   ├── validation/       # Type checking and error handling
-│   └── utils/            # Helpers and utilities
-├── examples/             # Demo graphs and tutorials
-└── docs/                 # User documentation
+│   ├── components/
+│   │   ├── UIManager.js          ✅
+│   │   ├── NodeGraph.js          🚧 (needs connection fixes)
+│   │   ├── PropertiesPanel.js    ✅
+│   │   ├── NodePalette.js        ✅
+│   │   ├── Connection.js         ❌ (to be created)
+│   │   ├── Port.js               ❌ (to be created)
+│   │   └── ShaderEditor.js       ❌ (to be created)
+│   ├── core/
+│   │   ├── EditorState.js        ✅
+│   │   ├── CommandManager.js     ❌ (for undo/redo)
+│   │   └── EventBus.js           ❌ (for decoupling)
+│   ├── minigl-bridge/
+│   │   └── MiniGLBridge.js       ✅
+│   └── app.js                    ✅
+├── style.css                     ✅
+├── index.html                    ✅
+└── test-minigl.html             ✅
+
+lib/miniGL/
+└── miniGL.js                     ✅ (patched with render method)
 ```
 
-### Key Design Decisions
-1. **React Flow vs Custom**: Use React Flow as base, heavily customize for miniGL
-2. **Canvas Strategy**: Hybrid Canvas2D + DOM for optimal performance
-3. **State Management**: Zustand for simplicity, avoid Redux complexity
-4. **TypeScript**: Full TypeScript for better miniGL integration
-5. **Testing**: Unit tests for core logic, E2E for user workflows
+## Success Metrics
 
-## Success Criteria
+### Week 1 Goals
+- [ ] Users can create texture → shader → output pipeline visually
+- [ ] Shader parameters update in real-time
+- [ ] Graph can be saved and loaded from JSON
+- [ ] No console errors during normal operation
 
-### Technical Goals
-- Real-time performance (60fps) with complex graphs
-- Seamless miniGL integration without breaking changes
-- Intuitive UX for both beginners and advanced users
-- Robust serialization and persistence
+### Week 2 Goals
+- [ ] Full CRUD operations on nodes and connections
+- [ ] Undo/redo for all operations
+- [ ] Keyboard shortcuts implemented
+- [ ] Multi-selection working
 
-### User Experience Goals
-- Visual learners can understand shader concepts
-- Rapid prototyping of visual effects
-- Easy sharing and collaboration
-- Professional workflow integration
+### Week 3 Goals
+- [ ] All miniGL node types supported
+- [ ] Shader editor with error highlighting
+- [ ] Performance stays above 30fps with 50+ nodes
+- [ ] Custom shaders can be created and saved
 
-## Risk Assessment
+### Week 4 Goals
+- [ ] Polish and bug fixes complete
+- [ ] Documentation and examples ready
+- [ ] Mobile/touch support functional
+- [ ] Ready for community feedback
 
-### Technical Risks
-- **Performance**: Large graphs may impact rendering performance
-- **Complexity**: Deep miniGL integration could introduce bugs
-- **Browser Compatibility**: Canvas/WebGL differences across browsers
+## Risk Mitigation
 
-### Mitigation Strategies
-- Progressive rendering and virtualization for large graphs
-- Comprehensive testing with miniGL test suite
-- Fallback modes for older browsers
+### Identified Risks
+1. **Connection System Complexity**
+   - Risk: Bezier curve calculations and hit detection
+   - Mitigation: Use established algorithms, add connection preview
 
-## Lessons Learned from Prototype Phase
+2. **miniGL API Limitations**
+   - Risk: Some operations may not be exposed
+   - Mitigation: Contribute patches upstream, add wrapper methods
 
-### What Worked Well
-1. **Vanilla JS First**: Building the prototype without frameworks revealed core patterns
-2. **Global State Object**: `EditorState` pattern proved sufficient for complexity
-3. **SVG for Nodes**: Better than Canvas2D for interactive elements
-4. **Event Delegation**: Scales well with dynamic UI elements
-5. **3-Column Layout**: Natural workflow from palette → graph → properties
+3. **Performance with Large Graphs**
+   - Risk: SVG rendering may slow down
+   - Mitigation: Implement viewport culling, use CSS transforms
 
-### Key Discoveries
-1. **Drag Preview Rectangle**: Essential for good UX - shows intent before action
-2. **Contextual Properties**: Different node types need completely different UIs
-3. **Color Coding**: Small visual cues greatly improve usability
-4. **Deferred Updates**: Prevents jarring reflows during interactions
-5. **Documentation Panel**: Empty states should be helpful, not empty
+4. **Shader Compilation Errors**
+   - Risk: Poor error messages from WebGL
+   - Mitigation: Pre-validation, better error formatting
 
-### Technical Insights
-1. **No Complex Libraries Needed**: CSS + SVG + vanilla JS surprisingly capable
-2. **Performance**: Selective updates more important than framework choice
-3. **State Management**: Simple patterns work until they don't - know when to upgrade
-4. **Modularization**: 1300+ line files indicate need for better organization
+## Next Immediate Actions
 
-### Architecture Decisions Validated
-- Separation of visual representation from data model
-- Event-driven updates with central state
-- Specialized property panels per node type
-- JSON serialization format with settings included
-- Preview and graph as separate concerns
+1. **Debug Connection Rendering** (2-3 hours)
+   - Check SVG path generation in NodeGraph.renderConnections()
+   - Verify connection data in EditorState
+   - Add console logging for connection updates
 
-## Next Steps
+2. **Implement Connection Dragging** (3-4 hours)
+   - Add mouse event handlers to output ports
+   - Create temporary connection during drag
+   - Validate and create connection on valid drop
 
-1. **miniGL Integration**: Connect the visual prototype to actual miniGL nodes
-2. **Connection System**: Implement the visual connection drawing and validation
-3. **Modularization**: Break down the monolithic script.js into modules
-4. **State Management**: Migrate from global object to proper state management
-5. **Production Build**: Consider React for complex state and component reuse
+3. **Fix miniGL Integration** (2-3 hours)
+   - Ensure proper node connection in miniGL
+   - Debug why blur shader isn't applying
+   - Add logging to track data flow
+
+4. **Test Basic Pipeline** (1 hour)
+   - Create texture → shader → output
+   - Verify each step processes correctly
+   - Document any remaining issues
 
 ---
 
-This plan, validated through prototyping, provides a comprehensive roadmap for creating a professional node-graph editor that leverages miniGL's excellent architecture while providing an intuitive visual interface for shader composition and creative coding.
+This updated plan reflects the current state of implementation and provides a clear path forward to complete the shader graph functionality.
