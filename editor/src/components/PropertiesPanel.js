@@ -16,14 +16,17 @@ export class PropertiesPanel {
         
         if (!propertiesPanel || !propertiesHeader) return;
         
-        if (!editorState.selectedNode) {
+        // If we have a currentNodeId, use that (happens when updating uniforms/textures)
+        const nodeId = this.currentNodeId || editorState.selectedNode;
+        
+        if (!nodeId) {
             // Show documentation when no node is selected
             propertiesHeader.textContent = 'Documentation';
             this.showDocumentation();
             return;
         }
         
-        const node = editorState.getNode(editorState.selectedNode);
+        const node = editorState.getNode(nodeId);
         if (!node) return;
         
         this.currentNodeId = node.id;
@@ -213,7 +216,7 @@ export class PropertiesPanel {
                 <h4>Uniforms</h4>
                 ${Object.entries(node.uniforms || {}).map(([name, uniform]) => `
                     <div class="property-item" data-uniform="${name}">
-                        <label>${name}</label>
+                        <input type="text" class="text-input uniform-name" value="${name}" style="width: 100px; margin-right: 8px;">
                         <div class="uniform-controls">
                             <select class="uniform-type">
                                 <option value="slider" ${uniform.type === 'slider' ? 'selected' : ''}>Slider</option>
@@ -223,10 +226,13 @@ export class PropertiesPanel {
                             </select>
                             ${uniform.type === 'toggle' ? 
                                 `<input type="checkbox" ${uniform.value ? 'checked' : ''} class="checkbox uniform-toggle">` :
+                                uniform.type === 'constant' ?
+                                `<input type="text" value="${uniform.value}" class="text-input uniform-constant">` :
                                 `<input type="range" min="${uniform.min || 0}" max="${uniform.max || 1}" 
-                                    step="0.1" value="${uniform.value}" class="slider uniform-slider">
+                                    step="0.01" value="${uniform.value}" class="slider uniform-slider">
                                  <span class="value">${uniform.value}</span>`
                             }
+                            <button class="remove-input" data-uniform="${name}" style="margin-left: 8px;">✕</button>
                         </div>
                     </div>
                 `).join('')}
@@ -235,23 +241,145 @@ export class PropertiesPanel {
             
             <div class="property-group">
                 <h4>Inputs</h4>
-                <div class="input-item">
-                    <label>uTexture</label>
-                    <select class="input-source">
-                        <option value="">None</option>
-                        ${nodes.map(n => 
-                            `<option value="${n.id}">${n.name}</option>`
-                        ).join('')}
-                    </select>
-                    <button class="remove-input">✕</button>
-                </div>
-                <button class="add-input-btn">+ Add Input</button>
+                ${(node.inputs || ['uTexture']).slice(0, 4).map(inputName => `
+                    <div class="input-item" data-input="${inputName}">
+                        <input type="text" class="text-input input-name" value="${inputName}" style="width: 100px; margin-right: 8px;">
+                        <select class="input-source" data-input="${inputName}">
+                            <option value="">None</option>
+                            ${nodes.filter(n => n.id !== node.id).map(n => 
+                                `<option value="${n.id}">${n.name}</option>`
+                            ).join('')}
+                        </select>
+                        <button class="remove-input" data-input="${inputName}">✕</button>
+                    </div>
+                `).join('')}
+                ${(node.inputs || []).length < 4 ? '<button class="add-input-btn">+ Add Input</button>' : ''}
             </div>
             
             ${this.renderAdvancedSection()}
         `;
         
         // Add event listeners for uniforms
+        container.querySelectorAll('.uniform-constant').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const uniformName = input.closest('[data-uniform]')?.getAttribute('data-uniform');
+                if (uniformName && node.uniforms[uniformName]) {
+                    node.uniforms[uniformName].value = parseFloat(e.target.value) || 0;
+                }
+            });
+        });
+        
+        // Add event listeners for uniform type changes
+        container.querySelectorAll('.uniform-type').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const uniformName = select.closest('[data-uniform]')?.getAttribute('data-uniform');
+                if (uniformName && node.uniforms[uniformName]) {
+                    node.uniforms[uniformName].type = e.target.value;
+                    // Re-render properties to update UI
+                    this.update();
+                }
+            });
+        });
+        
+        // Add event listeners for uniform name changes
+        container.querySelectorAll('.uniform-name').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const oldName = input.closest('[data-uniform]')?.getAttribute('data-uniform');
+                const newName = e.target.value.trim();
+                
+                if (!oldName || !newName || oldName === newName) return;
+                
+                const node = editorState.getNode(this.currentNodeId);
+                if (node && node.uniforms && node.uniforms[oldName]) {
+                    // Check if new name already exists
+                    if (node.uniforms[newName]) {
+                        alert('A uniform with this name already exists');
+                        e.target.value = oldName;
+                        return;
+                    }
+                    
+                    // Rename the uniform
+                    node.uniforms[newName] = node.uniforms[oldName];
+                    delete node.uniforms[oldName];
+                    
+                    // Update the UI
+                    this.update();
+                    
+                    // Update the miniGL node
+                    miniGLBridge.updateNodeProperty(this.currentNodeId, 'uniforms', node.uniforms);
+                }
+            });
+        });
+        
+        // Add event listeners for removing uniforms
+        container.querySelectorAll('.remove-input[data-uniform]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const uniformName = btn.getAttribute('data-uniform');
+                const node = editorState.getNode(this.currentNodeId);
+                
+                if (node && node.uniforms && node.uniforms[uniformName]) {
+                    if (confirm(`Remove uniform "${uniformName}"?`)) {
+                        delete node.uniforms[uniformName];
+                        
+                        // Update the UI
+                        this.update();
+                        
+                        // Update the miniGL node
+                        miniGLBridge.updateNodeProperty(this.currentNodeId, 'uniforms', node.uniforms);
+                    }
+                }
+            });
+        });
+        
+        // Add event listeners for input name changes
+        container.querySelectorAll('.input-name').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const oldName = input.closest('[data-input]')?.getAttribute('data-input');
+                const newName = e.target.value.trim();
+                
+                if (!oldName || !newName || oldName === newName) return;
+                
+                const node = editorState.getNode(this.currentNodeId);
+                if (node && node.inputs) {
+                    const index = node.inputs.indexOf(oldName);
+                    if (index !== -1) {
+                        // Check if new name already exists
+                        if (node.inputs.includes(newName)) {
+                            alert('An input with this name already exists');
+                            e.target.value = oldName;
+                            return;
+                        }
+                        
+                        // Rename the input
+                        node.inputs[index] = newName;
+                        
+                        // Update the UI
+                        this.update();
+                    }
+                }
+            });
+        });
+        
+        // Add event listeners for removing inputs
+        container.querySelectorAll('.remove-input[data-input]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const inputName = btn.getAttribute('data-input');
+                const node = editorState.getNode(this.currentNodeId);
+                
+                if (node && node.inputs) {
+                    if (confirm(`Remove input "${inputName}"?`)) {
+                        const index = node.inputs.indexOf(inputName);
+                        if (index !== -1) {
+                            node.inputs.splice(index, 1);
+                            
+                            // Update the UI
+                            this.update();
+                        }
+                    }
+                }
+            });
+        });
+        
         container.querySelectorAll('.uniform-slider').forEach(slider => {
             const valueSpan = slider.nextElementSibling;
             slider.addEventListener('input', (e) => {
@@ -320,7 +448,7 @@ export class PropertiesPanel {
                         <div class="doc-item"><code>glResolution</code> - Canvas size (vec2)</div>
                         <div class="doc-item"><code>glTime</code> - Animation time (float)</div>
                         <div class="doc-item"><code>glMouse</code> - Mouse position + click (vec3)</div>
-                        <div class="doc-item"><code>glCoord</code> - Aspect-corrected coordinates</div>
+                        <div class="doc-item"><code>glCoord</code> - Normalized coordinates (-1 to 1, aspect-corrected)</div>
                         <div class="doc-item"><code>glUV</code> - Raw texture coordinates</div>
                     </div>
                 </div>
@@ -348,8 +476,37 @@ export class PropertiesPanel {
         const addUniformBtn = document.querySelector('.add-uniform-btn');
         if (addUniformBtn) {
             addUniformBtn.addEventListener('click', () => {
-                console.log('Add uniform clicked');
-                // TODO: Implement add uniform dialog
+                const node = editorState.getNode(this.currentNodeId);
+                if (!node) return;
+                
+                // Generate a unique uniform name
+                let uniformCount = Object.keys(node.uniforms || {}).length;
+                let uniformName = `uCustom${uniformCount}`;
+                
+                // Make sure the name is unique
+                while (node.uniforms && node.uniforms[uniformName]) {
+                    uniformCount++;
+                    uniformName = `uCustom${uniformCount}`;
+                }
+                
+                // Add the uniform with default values
+                if (!node.uniforms) node.uniforms = {};
+                node.uniforms[uniformName] = {
+                    type: 'slider',
+                    value: 0.5,
+                    min: 0,
+                    max: 1
+                };
+                
+                // Update the properties panel to show the new uniform
+                this.update();
+                
+                // Update the miniGL node if it exists
+                const miniglNode = editorState.miniglNodes.get(this.currentNodeId);
+                if (miniglNode) {
+                    // Recreate the node with new uniforms
+                    miniGLBridge.updateNodeProperty(this.currentNodeId, 'uniforms', node.uniforms);
+                }
             });
         }
         
@@ -357,8 +514,35 @@ export class PropertiesPanel {
         const addInputBtn = document.querySelector('.add-input-btn');
         if (addInputBtn) {
             addInputBtn.addEventListener('click', () => {
-                console.log('Add input clicked');
-                // TODO: Implement add input dialog
+                const node = editorState.getNode(this.currentNodeId);
+                if (!node) return;
+                
+                // Limit to 4 texture inputs
+                const currentInputs = node.inputs || [];
+                if (currentInputs.length >= 4) {
+                    alert('Maximum of 4 texture inputs allowed');
+                    return;
+                }
+                
+                // Generate a unique input name
+                let inputCount = currentInputs.length;
+                let inputName = `uTexture${inputCount}`;
+                
+                // Make sure the name is unique
+                while (currentInputs.includes(inputName)) {
+                    inputCount++;
+                    inputName = `uTexture${inputCount}`;
+                }
+                
+                // Add the input
+                if (!node.inputs) node.inputs = [];
+                node.inputs.push(inputName);
+                
+                // Update the properties panel to show the new input
+                this.update();
+                
+                // Note: Texture connections are handled through the node graph UI
+                console.log(`Added texture input: ${inputName}`);
             });
         }
     }

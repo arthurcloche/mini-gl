@@ -283,9 +283,17 @@ export class NodeGraph {
         const dropdown = document.querySelector('.output-dropdown');
         if (!dropdown) return;
         
-        dropdown.innerHTML = Array.from(editorState.nodes.values()).map(node => 
-            `<option value="${node.id}" ${editorState.outputNode === node.id ? 'selected' : ''}>${node.name}</option>`
-        ).join('');
+        // Add "None" option first, then all nodes that can have output
+        const outputNodes = Array.from(editorState.nodes.values()).filter(node => 
+            editorState.hasOutput(node.type)
+        );
+        
+        dropdown.innerHTML = `
+            <option value="" ${!editorState.outputNode ? 'selected' : ''}>None</option>
+            ${outputNodes.map(node => 
+                `<option value="${node.id}" ${editorState.outputNode === node.id ? 'selected' : ''}>${node.name}</option>`
+            ).join('')}
+        `;
     }
     
     initializeConnectionDragging() {

@@ -22,20 +22,29 @@ export class EditorState {
     // Initialize with miniGL instance
     initializeMiniGL(canvas) {
         // Dynamic import to handle miniGL
-        return import('../../lib/miniGL/miniGL.js').then(module => {
-            const MiniGL = module.default || module.MiniGL;
-            this.minigl = new MiniGL(canvas);
+        return import('../../../lib/miniGL/miniGL.js').then(module => {
+            const miniGLClass = module.default || module.miniGL;
+            this.minigl = new miniGLClass(canvas);
             return this.minigl;
         });
     }
     
+    // Generate random two-word name
+    generateRandomName() {
+        const adjectives = ['Bright', 'Dark', 'Soft', 'Sharp', 'Smooth', 'Rough', 'Fast', 'Slow', 'Warm', 'Cool', 'Deep', 'Light', 'Heavy', 'Thin', 'Thick'];
+        const nouns = ['Wave', 'Flow', 'Pulse', 'Glow', 'Shine', 'Shadow', 'Echo', 'Ripple', 'Burst', 'Drift', 'Spark', 'Flash', 'Blur', 'Mix', 'Fade'];
+        const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+        const noun = nouns[Math.floor(Math.random() * nouns.length)];
+        return `${adj} ${noun}`;
+    }
+    
     // Node management
     addNode(type, name, position = {x: 100, y: 100}) {
-        const id = 'node_' + Date.now();
+        const id = 'node_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         const node = {
             id,
             type,
-            name: name || type,
+            name: name || this.generateRandomName(),
             position,
             uniforms: this.getDefaultUniforms(type),
             shader: this.getDefaultShader(type),
@@ -125,6 +134,9 @@ export class EditorState {
                 // Use the actual shader code or default
                 const shaderCode = editorNode.shader || this.getDefaultShader('Shader');
                 
+                console.log('Creating shader node with code:', shaderCode);
+                console.log('Shader uniforms:', uniforms);
+                
                 miniglNode = this.minigl.shader(
                     shaderCode,
                     uniforms,
@@ -133,6 +145,7 @@ export class EditorState {
                         height: editorNode.height || 512
                     }
                 );
+                console.log('Shader node created:', miniglNode);
                 break;
                 
             case 'Blend':
@@ -161,6 +174,9 @@ export class EditorState {
         
         if (miniglNode) {
             this.miniglNodes.set(editorNode.id, miniglNode);
+            console.log('Created miniGL node:', editorNode.type, editorNode.id, miniglNode);
+        } else {
+            console.error('Failed to create miniGL node for:', editorNode.type, editorNode.id);
         }
         
         return miniglNode;
@@ -246,6 +262,15 @@ export class EditorState {
     }
     
     selectNode(id) {
+        // Check if shader editor is open and prevent switching
+        const shaderOverlay = document.getElementById('shaderOverlay');
+        if (shaderOverlay && shaderOverlay.style.display !== 'none' && id !== this.selectedNode) {
+            // Allow clicking on the same node to view properties
+            if (id !== null) {
+                return; // Prevent switching to a different node
+            }
+        }
+        
         this.selectedNode = id;
         this.updateUI();
     }
@@ -257,9 +282,37 @@ export class EditorState {
         
         if (miniglNode && this.minigl) {
             try {
-                console.log('Setting output to:', node?.type, miniglNode);
+                console.log('Setting output to node:', id, 'miniglNode:', miniglNode);
                 // Use miniGL's output method
                 this.minigl.output(miniglNode);
+                console.log('Output set successfully');
+                
+                // Make sure render is started
+                if (typeof this.minigl.render === 'function') {
+                    console.log('Starting/restarting render after output set');
+                    // If not already running, start the render loop
+                    if (!this.minigl.isRunning()) {
+                        this.minigl.render();
+                        console.log('Render started, animation ID:', this.minigl._animationId);
+                    } else {
+                        console.log('Render already running with animation ID:', this.minigl._animationId);
+                    }
+                    
+                    // For single nodes without inputs, we may need to force an initial render
+                    if (this.nodes.size === 1 || !node.inputs || node.inputs.length === 0) {
+                        setTimeout(() => {
+                            // Force update the node first
+                            const currentTime = performance.now();
+                            miniglNode.update(currentTime, 0);
+                            
+                            // Then render to screen
+                            if (this.minigl.renderToScreen) {
+                                this.minigl.renderToScreen();
+                                console.log('Forced initial render for single node');
+                            }
+                        }, 100);
+                    }
+                }
             } catch (error) {
                 console.error('Error setting miniGL output:', error);
             }
@@ -272,10 +325,7 @@ export class EditorState {
     
     getDefaultUniforms(type) {
         const defaults = {
-            'Shader': { 
-                uTime: { type: 'slider', value: 0, min: 0, max: 10 },
-                uMouse: { type: 'constant', value: [0, 0] }
-            },
+            'Shader': {}, // Blank shader should have no uniforms
             'Feedback': { 
                 uDecay: { type: 'slider', value: 0.95, min: 0, max: 1 }
             },
@@ -300,26 +350,20 @@ precision highp float;
 uniform vec2 glResolution;
 uniform float glTime;
 uniform vec3 glMouse;
-uniform sampler2D glTexture;
-uniform float uTime;
 
+// glCoord is already normalized to [-1, 1] and aspect-corrected
+// No need to divide by glResolution
 in vec2 glCoord;
 in vec2 glUV;
 out vec4 fragColor;
 
 void main() {
     vec2 uv = glUV;
-    vec4 color = texture(glTexture, uv);
     
-    // Simple effect: rotate hue over time
-    float hue = uTime * 0.1;
-    color.rgb = vec3(
-        color.r * cos(hue) - color.g * sin(hue),
-        color.r * sin(hue) + color.g * cos(hue),
-        color.b
-    );
+    // Simple gradient pattern
+    vec3 color = vec3(uv.x, uv.y, 0.5 + 0.5 * sin(glTime));
     
-    fragColor = color;
+    fragColor = vec4(color, 1.0);
 }`,
             'Feedback': `#version 300 es
 precision highp float;

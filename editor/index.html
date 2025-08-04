@@ -139,8 +139,8 @@
             <div class="preview-panel">
                 <div class="panel-header">
                     <div class="preview-controls">
-                        <button class="control-btn">pause</button>
-                        <button class="control-btn">reset</button>
+                        <button class="control-btn" id="pauseBtn" onclick="window.miniGLEditor?.togglePause()">pause</button>
+                        <button class="control-btn" id="resetBtn" onclick="window.miniGLEditor?.resetTime()">reset</button>
                         <button class="control-btn record-btn" id="recordBtn">record</button>
                     </div>
                     <div class="preview-stats">
@@ -166,9 +166,7 @@
                         </select>
                     </div>
                     <div class="graph-controls">
-                        <button class="control-btn">zoom</button>
-                        <button class="control-btn">grid</button>
-                        <button class="control-btn">center</button>
+                        <button class="control-btn console-btn" id="consoleBtn">console</button>
                     </div>
                 </div>
                 <div class="graph-canvas">
@@ -209,7 +207,7 @@
             <div class="shader-overlay" id="shaderOverlay" style="display: none;">
                 <div class="shader-panel">
                     <div class="panel-header">
-                        <h3>Fragment Shader Editor</h3>
+                        <h3 id="shaderEditorTitle">Shader Editor</h3>
                         <div class="shader-controls">
                             <button class="control-btn test-btn">test</button>
                             <button class="control-btn run-btn">run</button>
@@ -349,6 +347,7 @@ void main() {
             <div class="bottom-panel">
                 <div class="panel-tabs">
                     <button class="tab-btn active" data-tab="settings">Settings</button>
+                    <button class="tab-btn" data-tab="globalUniforms">Global Uniforms</button>
                     <button class="tab-btn" data-tab="export">Export</button>
                 </div>
                 
@@ -357,11 +356,13 @@ void main() {
                         <div class="property-group">
                             <h4>Canvas</h4>
                             <div class="property-item">
-                                <label>Resolution</label>
+                                <label>Aspect Ratio</label>
                                 <select class="dropdown" id="resolutionSelect">
-                                    <option value="512x512">512x512</option>
-                                    <option value="1024x1024">1024x1024</option>
-                                    <option value="1920x1080">1920x1080</option>
+                                    <option value="1:1">1:1 (Square)</option>
+                                    <option value="2:1">2:1 (Panoramic)</option>
+                                    <option value="4:3">4:3 (Standard)</option>
+                                    <option value="8:5">8:5 (Golden)</option>
+                                    <option value="16:9">16:9 (Widescreen)</option>
                                 </select>
                             </div>
                         </div>
@@ -402,6 +403,19 @@ void main() {
                                 <span class="stat-label">FPS</span>
                                 <span class="stat-value">60</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="globalUniformsTab" style="display: none;">
+                    <div class="settings-content">
+                        <div class="property-group">
+                            <h4>Global Uniforms</h4>
+                            <p style="color: #888; font-size: 11px; margin-bottom: 12px;">Define uniforms that can be shared across multiple shaders</p>
+                            <div id="globalUniformsList">
+                                <!-- Global uniforms will be dynamically added here -->
+                            </div>
+                            <button class="add-uniform-btn" id="addGlobalUniformBtn">+ Add Global Uniform</button>
                         </div>
                     </div>
                 </div>

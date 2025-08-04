@@ -7,6 +7,7 @@ export class UIManager {
         this.isRecording = false;
         this.frameCount = 0;
         this.frameInterval = null;
+        this.editingNodeId = null; // Track which node is being edited
     }
     
     initialize() {
@@ -31,6 +32,7 @@ export class UIManager {
     initializeTabs() {
         const tabBtns = document.querySelectorAll('.tab-btn');
         const settingsTab = document.getElementById('settingsTab');
+        const globalUniformsTab = document.getElementById('globalUniformsTab');
         const exportTab = document.getElementById('exportTab');
         
         tabBtns.forEach(btn => {
@@ -41,31 +43,86 @@ export class UIManager {
                 tabBtns.forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 
-                // Show/hide content
-                if (tabName === 'settings') {
-                    if (settingsTab) settingsTab.style.display = 'block';
-                    if (exportTab) exportTab.style.display = 'none';
-                } else if (tabName === 'export') {
-                    if (settingsTab) settingsTab.style.display = 'none';
-                    if (exportTab) exportTab.style.display = 'block';
+                // Hide all tabs
+                if (settingsTab) settingsTab.style.display = 'none';
+                if (globalUniformsTab) globalUniformsTab.style.display = 'none';
+                if (exportTab) exportTab.style.display = 'none';
+                
+                // Show selected tab
+                switch(tabName) {
+                    case 'settings':
+                        if (settingsTab) settingsTab.style.display = 'block';
+                        break;
+                    case 'globalUniforms':
+                        if (globalUniformsTab) globalUniformsTab.style.display = 'block';
+                        break;
+                    case 'export':
+                        if (exportTab) exportTab.style.display = 'block';
+                        break;
                 }
             });
         });
     }
     
     initializeSettings() {
-        // Resolution change
+        // Aspect ratio change
         const resolutionSelect = document.getElementById('resolutionSelect');
         if (resolutionSelect) {
             resolutionSelect.addEventListener('change', function() {
-                const [width, height] = this.value.split('x');
+                const ratio = this.value;
                 const canvas = document.getElementById('preview');
-                if (canvas) {
-                    canvas.width = parseInt(width);
-                    canvas.height = parseInt(height);
-                    canvas.style.width = '100%';
-                    canvas.style.height = '100%';
-                    canvas.style.objectFit = 'contain';
+                if (canvas && miniGLBridge.minigl) {
+                    const container = canvas.parentElement;
+                    if (!container) return;
+                    
+                    const containerRect = container.getBoundingClientRect();
+                    const [widthRatio, heightRatio] = ratio.split(':').map(Number);
+                    const aspectRatio = widthRatio / heightRatio;
+                    
+                    // Calculate optimal size to fit within container
+                    const containerAspect = containerRect.width / containerRect.height;
+                    let width, height;
+                    
+                    if (aspectRatio > containerAspect) {
+                        // Canvas is wider than container - fit to width
+                        width = Math.floor(containerRect.width);
+                        height = Math.floor(width / aspectRatio);
+                    } else {
+                        // Canvas is taller than container - fit to height
+                        height = Math.floor(containerRect.height);
+                        width = Math.floor(height * aspectRatio);
+                    }
+                    
+                    // Ensure minimum size and make it power of 2 friendly
+                    width = Math.max(256, Math.round(width / 64) * 64);
+                    height = Math.max(256, Math.round(height / 64) * 64);
+                    
+                    // Update canvas dimensions
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // Update CSS to center in container
+                    canvas.style.width = width + 'px';
+                    canvas.style.height = height + 'px';
+                    canvas.style.position = 'absolute';
+                    canvas.style.left = '50%';
+                    canvas.style.top = '50%';
+                    canvas.style.transform = 'translate(-50%, -50%)';
+                    
+                    // Update miniGL resolution
+                    if (miniGLBridge.minigl.resize) {
+                        miniGLBridge.minigl.resize(width, height);
+                    }
+                    
+                    // Update all nodes to new resolution
+                    editorState.nodes.forEach((node, id) => {
+                        const miniglNode = editorState.miniglNodes.get(id);
+                        if (miniglNode && miniglNode.resize) {
+                            miniglNode.resize(width, height);
+                        }
+                    });
+                    
+                    console.log(`Canvas resized to ${width}x${height} (${ratio})`);
                 }
             });
         }
@@ -309,6 +366,12 @@ export class UIManager {
         shaderOverlay.style.display = this.isShaderPanelOpen ? 'flex' : 'none';
         
         if (this.isShaderPanelOpen && editorState.selectedNode) {
+            this.editingNodeId = editorState.selectedNode;
+        } else {
+            this.editingNodeId = null;
+        }
+        
+        if (this.isShaderPanelOpen && editorState.selectedNode) {
             const node = editorState.getNode(editorState.selectedNode);
             if (node && (node.type === 'Shader' || node.type === 'Feedback')) {
                 const codeEditor = shaderOverlay.querySelector('.code-editor');
@@ -339,9 +402,6 @@ export class UIManager {
                         
                         // Update miniGL node
                         miniGLBridge.updateNodeProperty(nodeId, 'shader', codeEditor.value);
-                        
-                        // Close panel
-                        this.toggleShaderPanel();
                     }
                 }
             });
@@ -350,14 +410,72 @@ export class UIManager {
         if (testBtn && !testBtn.hasAttribute('data-initialized')) {
             testBtn.setAttribute('data-initialized', 'true');
             testBtn.addEventListener('click', () => {
-                if (codeEditor) {
+                if (codeEditor && miniGLBridge.minigl) {
                     // Test shader compilation
+                    const shaderCode = codeEditor.value;
+                    const gl = document.getElementById('preview')?.getContext('webgl2');
+                    
+                    if (!gl) {
+                        console.error('WebGL2 context not available');
+                        testBtn.style.background = '#8a2a2a';
+                        testBtn.style.color = '#ff6b6b';
+                        setTimeout(() => {
+                            testBtn.style.background = '';
+                            testBtn.style.color = '';
+                        }, 2000);
+                        return;
+                    }
+                    
                     try {
-                        // Just validate the shader syntax for now
-                        console.log('Testing shader...');
-                        // TODO: Add actual shader validation
+                        // Create a test fragment shader
+                        const shader = gl.createShader(gl.FRAGMENT_SHADER);
+                        gl.shaderSource(shader, shaderCode);
+                        gl.compileShader(shader);
+                        
+                        const success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+                        const infoLog = gl.getShaderInfoLog(shader);
+                        
+                        gl.deleteShader(shader);
+                        
+                        if (success) {
+                            console.log('Shader compiled successfully!');
+                            testBtn.style.background = '#2a4a2a';
+                            testBtn.style.color = '#51cf66';
+                            
+                            // Clear any shader errors from console
+                            if (window.miniGLEditor?.console) {
+                                window.miniGLEditor.console.logShaderWarning('Shader compiled successfully');
+                            }
+                        } else {
+                            console.error('Shader compilation failed:', infoLog);
+                            testBtn.style.background = '#8a2a2a';
+                            testBtn.style.color = '#ff6b6b';
+                            
+                            // Log to console component
+                            if (window.miniGLEditor?.console) {
+                                window.miniGLEditor.console.logShaderError(infoLog);
+                            }
+                        }
+                        
+                        // Reset button style after 2 seconds
+                        setTimeout(() => {
+                            testBtn.style.background = '';
+                            testBtn.style.color = '';
+                        }, 2000);
+                        
                     } catch (error) {
-                        console.error('Shader error:', error);
+                        console.error('Shader test error:', error);
+                        testBtn.style.background = '#8a2a2a';
+                        testBtn.style.color = '#ff6b6b';
+                        
+                        if (window.miniGLEditor?.console) {
+                            window.miniGLEditor.console.logShaderError(error.message);
+                        }
+                        
+                        setTimeout(() => {
+                            testBtn.style.background = '';
+                            testBtn.style.color = '';
+                        }, 2000);
                     }
                 }
             });
@@ -401,9 +519,6 @@ export class UIManager {
                     
                     // Update miniGL node
                     miniGLBridge.updateNodeProperty(nodeId, 'canvasCode', codeEditor.value);
-                    
-                    // Close panel
-                    this.toggleShaderPanel();
                 }
             }
         });

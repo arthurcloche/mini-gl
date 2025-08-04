@@ -38,7 +38,7 @@ export class NodePalette {
                 const x = 50 + Math.random() * 400;
                 const y = 50 + Math.random() * 200;
                 
-                editorState.addNode(nodeType, nodeType, { x, y });
+                editorState.addNode(nodeType, null, { x, y });
                 
                 // Visual feedback
                 e.target.style.background = '#4a90e2';

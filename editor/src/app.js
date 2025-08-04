@@ -5,6 +5,7 @@ import { UIManager } from './components/UIManager.js';
 import { NodeGraph } from './components/NodeGraph.js';
 import { PropertiesPanel } from './components/PropertiesPanel.js';
 import { NodePalette } from './components/NodePalette.js';
+import { Console } from './components/Console.js';
 
 class MiniGLEditor {
     constructor() {
@@ -12,6 +13,7 @@ class MiniGLEditor {
         this.nodeGraph = new NodeGraph();
         this.propertiesPanel = new PropertiesPanel();
         this.nodePalette = new NodePalette();
+        this.console = new Console();
         
         // Bind update callback
         editorState.onUpdate = () => this.updateUI();
@@ -26,6 +28,10 @@ class MiniGLEditor {
             console.error('Preview canvas not found');
             return false;
         }
+        
+        console.log('Preview canvas found:', previewCanvas);
+        console.log('Canvas dimensions:', previewCanvas.width, 'x', previewCanvas.height);
+        console.log('Canvas display style:', window.getComputedStyle(previewCanvas).display);
         
         // Initialize MiniGL bridge with the preview canvas
         miniGLBridge.canvas = previewCanvas;
@@ -44,16 +50,25 @@ class MiniGLEditor {
         this.nodeGraph.initialize();
         this.propertiesPanel.initialize();
         this.nodePalette.initialize();
+        this.console.initialize();
         
         // Set up global functions for HTML onclick handlers
         window.toggleShaderPanel = () => this.uiManager.toggleShaderPanel();
         window.toggleCanvasEditor = () => this.uiManager.toggleCanvasEditor();
         window.exportGraphAsJSON = () => this.exportGraph();
         window.matchWebGLCanvas = () => this.matchWebGLCanvas();
+        window.miniGLEditor.togglePause = () => this.togglePause();
+        window.miniGLEditor.resetTime = () => this.resetTime();
         
         // Initialize with some default nodes ONLY if miniGL is available
         if (miniGLBridge.minigl) {
-            this.initializeDefaultNodes();
+            console.log('miniGL is available, initializing default nodes');
+            // Add a delay to ensure miniGL is fully ready
+            setTimeout(() => {
+                this.initializeDefaultNodes();
+            }, 500);
+        } else {
+            console.log('miniGL not available yet, skipping default nodes');
         }
         
         // Initial UI update
@@ -65,7 +80,7 @@ class MiniGLEditor {
     
     initializeDefaultNodes() {
         // Start with a simple shader node
-        const shaderNode = editorState.addNode('Shader', 'Gradient Shader', {x: 100, y: 100});
+        const shaderNode = editorState.addNode('Shader', null, {x: 100, y: 100});
         
         // Set a simple gradient shader
         if (shaderNode) {
@@ -75,12 +90,14 @@ precision highp float;
 uniform vec2 glResolution;
 uniform float glTime;
 
+in vec2 glCoord;
 in vec2 glUV;
 out vec4 fragColor;
 
 void main() {
-    // Simple animated gradient
-    vec3 col = 0.5 + 0.5 * cos(glTime * 0.001 + glUV.xyx + vec3(0, 2, 4));
+    // Simple animated gradient using UV coordinates
+    vec2 uv = glUV;
+    vec3 col = 0.5 + 0.5 * cos(glTime * 0.001 + uv.xyx + vec3(0, 2, 4));
     fragColor = vec4(col, 1.0);
 }`;
             
@@ -159,6 +176,65 @@ void main() {
         }
     }
     
+    togglePause() {
+        const pauseBtn = document.getElementById('pauseBtn');
+        if (miniGLBridge.minigl) {
+            const isRunning = miniGLBridge.minigl.isRunning();
+            console.log('Toggle pause, isRunning:', isRunning, '_animationId:', miniGLBridge.minigl._animationId);
+            
+            if (isRunning) {
+                // Pause
+                miniGLBridge.minigl.stop();
+                miniGLBridge.isPaused = true;
+                if (pauseBtn) pauseBtn.textContent = 'play';
+                console.log('Paused render');
+            } else {
+                // Resume
+                miniGLBridge.minigl.start();
+                miniGLBridge.isPaused = false;
+                if (pauseBtn) pauseBtn.textContent = 'pause';
+                console.log('Resumed render');
+            }
+        } else {
+            console.error('miniGL not available for pause/resume');
+        }
+    }
+    
+    resetTime() {
+        if (miniGLBridge.minigl) {
+            console.log('Resetting time...');
+            const wasRunning = miniGLBridge.minigl.isRunning();
+            
+            // Stop the render loop
+            miniGLBridge.minigl.stop();
+            
+            // Reset the internal clock
+            miniGLBridge.minigl.clock = 0;
+            miniGLBridge.minigl.frameId = 0;
+            console.log('Clock reset to 0');
+            
+            // Reset UI frame counter
+            this.uiManager.frameCount = 0;
+            const frameCountEl = document.getElementById('frameCount');
+            if (frameCountEl) frameCountEl.textContent = '0';
+            
+            // Force a single render to show the reset state
+            if (miniGLBridge.minigl.renderToScreen) {
+                miniGLBridge.minigl.renderToScreen();
+            }
+            
+            // Restart if it was running and not paused
+            if (wasRunning && !miniGLBridge.isPaused) {
+                setTimeout(() => {
+                    miniGLBridge.minigl.start();
+                    console.log('Restarted render after reset');
+                }, 50);
+            }
+        } else {
+            console.error('miniGL not available for reset');
+        }
+    }
+    
 }
 
 // Initialize when DOM is ready
@@ -170,6 +246,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!success) {
         console.error('Failed to initialize editor');
     }
+    
+    // Make console available globally
+    window.miniGLEditor.console = editor.console;
 });
 
 export default MiniGLEditor;

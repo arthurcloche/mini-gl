@@ -7,17 +7,90 @@ export class MiniGLBridge {
         this.minigl = null;
         this.isInitialized = false;
         this.animationFrame = null;
+        this.isPaused = false;
     }
     
     async initialize() {
         try {
             // Try to load MiniGL
-            const MiniGL = await this.loadMiniGL();
+            const miniGLClass = await this.loadMiniGL();
             
-            if (MiniGL) {
-                // Create MiniGL instance with canvas
-                this.minigl = new MiniGL(this.canvas, { fps: 60 });
+            if (miniGLClass) {
+                console.log('Creating MiniGL with canvas:', this.canvas);
+                console.log('Canvas tagName:', this.canvas.tagName);
+                console.log('Canvas before MiniGL:', {
+                    width: this.canvas.width,
+                    height: this.canvas.height,
+                    clientWidth: this.canvas.clientWidth,
+                    clientHeight: this.canvas.clientHeight
+                });
+                
+                // Create MiniGL instance with canvas - disable responsive
+                this.minigl = new miniGLClass(this.canvas, { 
+                    fps: 60,
+                    width: 512,
+                    height: 512
+                });
                 editorState.minigl = this.minigl;
+                
+                // Set up ResizeObserver for panel resizing
+                this.setupResizeObserver();
+                
+                console.log('Canvas after MiniGL:', {
+                    width: this.canvas.width,
+                    height: this.canvas.height,
+                    clientWidth: this.canvas.clientWidth,
+                    clientHeight: this.canvas.clientHeight
+                });
+                console.log('MiniGL canvas:', this.minigl.canvas);
+                console.log('MiniGL canvas same as ours?', this.minigl.canvas === this.canvas);
+                console.log('MiniGL instance created:', this.minigl);
+                
+                // Verify WebGL context 
+                const gl = this.minigl.gl;
+                if (!gl) {
+                    console.error('miniGL WebGL2 context not available');
+                    this.startPlaceholderAnimation();
+                    return;
+                }
+                console.log('miniGL WebGL2 context ready');
+                
+                // Test if we can create and render a simple shader
+                try {
+                    const testShader = this.minigl.shader(`#version 300 es
+                        precision highp float;
+                        uniform vec2 glResolution;
+                        in vec2 glCoord;
+                        out vec4 fragColor;
+                        void main() {
+                            vec2 uv = glCoord / glResolution;
+                            fragColor = vec4(uv.x, uv.y, 0.5, 1.0);
+                        }`);
+                    console.log('Test shader created successfully:', testShader);
+                    console.log('Test shader properties:', Object.keys(testShader));
+                    
+                    // Try to set it as output and render
+                    this.minigl.output(testShader);
+                    console.log('Test shader set as output');
+                    
+                    // Check if render actually starts
+                    const renderResult = this.minigl.render();
+                    console.log('Render method called, result:', renderResult);
+                    console.log('Animation ID after render:', this.minigl._animationId);
+                    
+                    // Force a manual render to test
+                    setTimeout(() => {
+                        console.log('Forcing manual render test');
+                        if (this.minigl.renderToScreen) {
+                            this.minigl.renderToScreen();
+                            console.log('Manual render to screen called');
+                        }
+                    }, 100);
+                    
+                } catch (e) {
+                    console.error('Failed to create test shader:', e);
+                    console.error('Error details:', e.message, e.stack);
+                }
                 
                 // Start render loop
                 this.startRenderLoop();
@@ -45,7 +118,8 @@ export class MiniGLBridge {
         try {
             // Correct path: go up 2 levels from /editor/src/ to get to root, then to lib
             const module = await import('../../../lib/miniGL/miniGL.js');
-            return module.miniGL || module.default || window.miniGL;
+            // miniGL class is exported as default
+            return module.default || module.miniGL || window.miniGL;
         } catch (error) {
             console.warn('Failed to load MiniGL module:', error);
             // Fallback to global miniGL if available
@@ -62,8 +136,12 @@ export class MiniGLBridge {
     }
     
     startPlaceholderAnimation() {
+        console.log('Starting placeholder animation on canvas:', this.canvas);
         const ctx = this.canvas.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+            console.error('Failed to get 2D context for canvas');
+            return;
+        }
         
         let frame = 0;
         const animate = () => {
@@ -107,24 +185,11 @@ export class MiniGLBridge {
     startRenderLoop() {
         if (!this.minigl) return;
         
-        // Use miniGL's render method with callback
-        if (typeof this.minigl.render === 'function') {
-            console.log('Starting render with miniGL nodes:', editorState.miniglNodes.size);
-            this.minigl.render((time) => {
-                // Update time uniforms for all nodes
-                editorState.nodes.forEach((node, id) => {
-                    if (node.uniforms && node.uniforms.uTime) {
-                        const miniglNode = editorState.miniglNodes.get(id);
-                        if (miniglNode && miniglNode.updateUniform) {
-                            miniglNode.updateUniform('uTime', time * 0.001);
-                        }
-                    }
-                });
-            });
-        } else {
-            console.error('miniGL.render is not a function, falling back to placeholder');
-            this.startPlaceholderAnimation();
-        }
+        console.log('miniGL instance:', this.minigl);
+        console.log('miniGL methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(this.minigl)));
+        
+        // Don't start render here, let it start when output is set
+        console.log('Render loop ready to start when output is set');
     }
     
     stopRenderLoop() {
@@ -229,8 +294,72 @@ export class MiniGLBridge {
         }
     }
     
+    setupResizeObserver() {
+        const container = this.canvas?.parentElement;
+        if (!container || !window.ResizeObserver) return;
+        
+        // Disconnect any existing observer
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+        
+        this.resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                // Get current aspect ratio from settings
+                const resolutionSelect = document.getElementById('resolutionSelect');
+                if (!resolutionSelect) return;
+                
+                const ratio = resolutionSelect.value;
+                const [widthRatio, heightRatio] = ratio.split(':').map(Number);
+                const aspectRatio = widthRatio / heightRatio;
+                
+                // Calculate optimal size to fit within container
+                const containerRect = entry.contentRect;
+                const containerAspect = containerRect.width / containerRect.height;
+                let width, height;
+                
+                if (aspectRatio > containerAspect) {
+                    // Canvas is wider than container - fit to width
+                    width = Math.floor(containerRect.width);
+                    height = Math.floor(width / aspectRatio);
+                } else {
+                    // Canvas is taller than container - fit to height
+                    height = Math.floor(containerRect.height);
+                    width = Math.floor(height * aspectRatio);
+                }
+                
+                // Ensure minimum size and make it power of 2 friendly
+                width = Math.max(256, Math.round(width / 64) * 64);
+                height = Math.max(256, Math.round(height / 64) * 64);
+                
+                // Update canvas dimensions
+                this.canvas.width = width;
+                this.canvas.height = height;
+                
+                // Update CSS to center in container
+                this.canvas.style.width = width + 'px';
+                this.canvas.style.height = height + 'px';
+                this.canvas.style.position = 'absolute';
+                this.canvas.style.left = '50%';
+                this.canvas.style.top = '50%';
+                this.canvas.style.transform = 'translate(-50%, -50%)';
+                
+                // Update miniGL resolution
+                if (this.minigl && this.minigl.resize) {
+                    this.minigl.resize(width, height);
+                }
+            }
+        });
+        
+        this.resizeObserver.observe(container);
+    }
+    
     dispose() {
         this.stopRenderLoop();
+        
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
         
         if (this.minigl && this.minigl.dispose) {
             this.minigl.dispose();
