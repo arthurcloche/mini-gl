@@ -263,6 +263,7 @@ body {
     background: #000;
     border: 1px solid #333;
     display: block;
+    image-rendering: auto;
 }
 
 .fps-indicator {
@@ -381,13 +382,15 @@ body {
 /* Node Color Coding */
 .graph-node[data-node-type="Texture"] .node-title,
 .graph-node[data-node-type="Video"] .node-title,
-.graph-node[data-node-type="Canvas"] .node-title {
+.graph-node[data-node-type="Canvas"] .node-title,
+.graph-node[data-node-type="Text"] .node-title {
     fill: #4fc3f7; /* Light blue for input nodes */
 }
 
 .graph-node[data-node-type="Texture"] .node-output,
 .graph-node[data-node-type="Video"] .node-output,
-.graph-node[data-node-type="Canvas"] .node-output {
+.graph-node[data-node-type="Canvas"] .node-output,
+.graph-node[data-node-type="Text"] .node-output {
     fill: #4fc3f7;
     stroke: #29b6f6;
 }
@@ -524,13 +527,13 @@ body {
 
 /* Shader Editor Overlay */
 .shader-overlay {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.9);
-    z-index: 1000;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 100;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1192,11 +1195,30 @@ body {
     font-size: 11px;
     width: 100%;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    transition: all 0.3s ease;
 }
 
 .url-input:focus {
     outline: none;
     border-color: #4a90e2;
+}
+
+.url-input.loading {
+    background: #333 url('data:image/svg+xml,%3Csvg width="20" height="20" xmlns="http://www.w3.org/2000/svg"%3E%3Cstyle%3E@keyframes spin{to{transform:rotate(360deg)}}%3C/style%3E%3Cg transform="translate(10,10)"%3E%3Ccircle r="8" fill="none" stroke="%234a90e2" stroke-width="2" opacity="0.3"/%3E%3Cpath d="M 0,-8 A 8,8 0 0,1 8,0" fill="none" stroke="%234a90e2" stroke-width="2" style="animation:spin 1s linear infinite;transform-origin:center"/%3E%3C/g%3E%3C/svg%3E') no-repeat;
+    background-position: calc(100% - 8px) center;
+    padding-right: 32px;
+    border-color: #4a90e2;
+    opacity: 0.8;
+}
+
+.url-input.error {
+    border-color: #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.1);
+}
+
+.url-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .match-canvas-btn {

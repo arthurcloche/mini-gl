@@ -6,7 +6,6 @@ export class NodePalette {
     }
     
     initialize() {
-        console.log('Initializing Node Palette...');
         
         // Initialize add node buttons
         this.initializeAddButtons();
@@ -32,7 +31,6 @@ export class NodePalette {
                     return;
                 }
                 
-                console.log('Adding node of type:', nodeType);
                 
                 // Add node at a random position to avoid overlap
                 const x = 50 + Math.random() * 400;

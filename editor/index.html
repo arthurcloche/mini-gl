@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>miniGL Editor Prototype</title>
+    <title>miniGL Node Editor</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,56 +14,9 @@
             <div class="scene-graph">
                 <div class="panel-header">
                     <h3>Scene Graph</h3>
-                    <div class="scene-info">
-                        <span class="info-text">Read Only</span>
-                    </div>
                 </div>
                 <div class="scene-content">
-                    <div class="scene-node">
-                        <span class="node-icon">📊</span>
-                        <span class="node-name editable" contenteditable="false">Main Output</span>
-                        <div class="node-actions">
-                            <button class="action-btn" title="Rename">✏️</button>
-                            <button class="action-btn" title="Copy">📋</button>
-                            <button class="action-btn" title="Delete">🗑️</button>
-                        </div>
-                    </div>
-                    <div class="scene-node indent">
-                        <span class="node-icon">🎨</span>
-                        <span class="node-name editable" contenteditable="false">Bloom Effect</span>
-                        <div class="node-actions">
-                            <button class="action-btn" title="Rename">✏️</button>
-                            <button class="action-btn" title="Copy">📋</button>
-                            <button class="action-btn" title="Delete">🗑️</button>
-                        </div>
-                    </div>
-                    <div class="scene-node indent-2">
-                        <span class="node-icon">⚡</span>
-                        <span class="node-name editable" contenteditable="false">Blur H</span>
-                        <div class="node-actions">
-                            <button class="action-btn" title="Rename">✏️</button>
-                            <button class="action-btn" title="Copy">📋</button>
-                            <button class="action-btn" title="Delete">🗑️</button>
-                        </div>
-                    </div>
-                    <div class="scene-node indent-2">
-                        <span class="node-icon">⚡</span>
-                        <span class="node-name editable" contenteditable="false">Blur V</span>
-                        <div class="node-actions">
-                            <button class="action-btn" title="Rename">✏️</button>
-                            <button class="action-btn" title="Copy">📋</button>
-                            <button class="action-btn" title="Delete">🗑️</button>
-                        </div>
-                    </div>
-                    <div class="scene-node indent">
-                        <span class="node-icon">🖼️</span>
-                        <span class="node-name editable" contenteditable="false">Source Texture</span>
-                        <div class="node-actions">
-                            <button class="action-btn" title="Rename">✏️</button>
-                            <button class="action-btn" title="Copy">📋</button>
-                            <button class="action-btn" title="Delete">🗑️</button>
-                        </div>
-                    </div>
+                    <!-- Populated by JavaScript -->
                 </div>
             </div>
 
@@ -73,62 +26,63 @@
                     <h3>Node Palette</h3>
                 </div>
                 <div class="palette-content">
+                    <!-- Source Nodes -->
                     <div class="node-category">
-                        <h4>Input</h4>
                         <div class="node-item" draggable="true" data-node-type="Texture">
                             <span class="node-icon">🖼️</span>
                             <span class="node-name">Texture</span>
-                            <button class="add-node-btn">Add</button>
-                        </div>
-                        <div class="node-item" draggable="true" data-node-type="Video">
-                            <span class="node-icon">📹</span>
-                            <span class="node-name">Video</span>
-                            <button class="add-node-btn">Add</button>
+                            <button class="add-node-btn" title="Add node">+</button>
                         </div>
                         <div class="node-item" draggable="true" data-node-type="Canvas">
                             <span class="node-icon">📊</span>
                             <span class="node-name">Canvas</span>
-                            <button class="add-node-btn">Add</button>
+                            <button class="add-node-btn" title="Add node">+</button>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="Text">
+                            <span class="node-icon">📝</span>
+                            <span class="node-name">Text</span>
+                            <button class="add-node-btn" title="Add node">+</button>
                         </div>
                     </div>
+                    
+                    <!-- Processing Nodes -->
                     <div class="node-category">
-                        <h4>Core Nodes</h4>
                         <div class="node-item" draggable="true" data-node-type="Shader">
                             <span class="node-icon">⚡</span>
                             <span class="node-name">Shader</span>
-                            <button class="add-node-btn">Add</button>
+                            <button class="add-node-btn" title="Add node">+</button>
                         </div>
                         <div class="node-item" draggable="true" data-node-type="Blend">
                             <span class="node-icon">🎨</span>
                             <span class="node-name">Blend</span>
-                            <button class="add-node-btn">Add</button>
+                            <button class="add-node-btn" title="Add node">+</button>
                         </div>
                         <div class="node-item" draggable="true" data-node-type="Feedback">
                             <span class="node-icon">🔄</span>
                             <span class="node-name">Feedback</span>
-                            <button class="add-node-btn">Add</button>
+                            <button class="add-node-btn" title="Add node">+</button>
                         </div>
                     </div>
-                    <!-- MiniNodes hidden for now -->
-                    <!--
+                    
+                    <!-- Effect Nodes -->
                     <div class="node-category">
-                        <h4>MiniNodes</h4>
+                        <h4>Effects</h4>
+                        <div class="node-item" draggable="true" data-node-type="Grayscale">
+                            <span class="node-icon">⚫</span>
+                            <span class="node-name">Grayscale</span>
+                            <button class="add-node-btn" title="Add node">+</button>
+                        </div>
                         <div class="node-item" draggable="true" data-node-type="Blur">
                             <span class="node-icon">🌸</span>
                             <span class="node-name">Blur</span>
-                            <button class="add-node-btn">Add</button>
+                            <button class="add-node-btn" title="Add node">+</button>
                         </div>
-                        <div class="node-item" draggable="true" data-node-type="Bloom">
-                            <span class="node-icon">✨</span>
-                            <span class="node-name">Bloom</span>
-                            <button class="add-node-btn">Add</button>
-                        </div>
-                        <div class="node-item disabled">
+                        <div class="node-item" draggable="true" data-node-type="LensDistortion">
                             <span class="node-icon">🔮</span>
-                            <span class="node-name">Custom Effects...</span>
+                            <span class="node-name">Lens Distortion</span>
+                            <button class="add-node-btn" title="Add node">+</button>
                         </div>
                     </div>
-                    -->
                 </div>
             </div>
         </div>
@@ -160,9 +114,7 @@
                     <div class="output-selector">
                         <label>Output:</label>
                         <select class="output-dropdown">
-                            <option value="blur">Blur Effect</option>
-                            <option value="source">Source</option>
-                            <option value="blend">Blend Result</option>
+                            <!-- Populated by JavaScript -->
                         </select>
                     </div>
                     <div class="graph-controls">
@@ -171,293 +123,99 @@
                 </div>
                 <div class="graph-canvas">
                     <svg class="graph-svg" width="100%" height="100%">
-                        <!-- Connection Lines (straight) -->
-                        <line x1="140" y1="70" x2="260" y2="70" class="connection-line" />
-                        <line x1="380" y1="100" x2="460" y2="120" class="connection-line" />
-                        <line x1="380" y1="120" x2="460" y2="140" class="connection-line" />
-                        
-                        <!-- Sample Nodes -->
-                        <g class="graph-node draggable" transform="translate(20, 40)" data-node-id="source">
-                            <rect class="node-body" width="120" height="60" rx="4" />
-                            <text class="node-title" x="60" y="20">Source</text>
-                            <text class="node-type" x="60" y="35">Texture</text>
-                            <circle class="node-output" cx="115" cy="30" r="4" />
-                        </g>
-                        
-                        <g class="graph-node draggable selected" transform="translate(260, 60)" data-node-id="blur">
-                            <rect class="node-body" width="120" height="80" rx="4" />
-                            <text class="node-title" x="60" y="20">Blur Effect</text>
-                            <text class="node-type" x="60" y="35">Shader</text>
-                            <circle class="node-input" cx="5" cy="30" r="4" />
-                            <circle class="node-output" cx="115" cy="40" r="4" />
-                        </g>
-                        
-                        <g class="graph-node draggable" transform="translate(460, 100)" data-node-id="output">
-                            <rect class="node-body" width="120" height="80" rx="4" />
-                            <text class="node-title" x="60" y="20">Final Output</text>
-                            <text class="node-type" x="60" y="35">Blend</text>
-                            <circle class="node-input" cx="5" cy="30" r="4" />
-                            <circle class="node-input" cx="5" cy="50" r="4" />
-                        </g>
+                        <!-- Graph content populated by JavaScript -->
                     </svg>
                 </div>
-            </div>
-            
-            <!-- Shader Editor Overlay (hidden by default) -->
-            <div class="shader-overlay" id="shaderOverlay" style="display: none;">
-                <div class="shader-panel">
-                    <div class="panel-header">
-                        <h3 id="shaderEditorTitle">Shader Editor</h3>
-                        <div class="shader-controls">
-                            <button class="control-btn test-btn">test</button>
-                            <button class="control-btn run-btn">run</button>
-                            <button class="close-btn" onclick="toggleShaderPanel()">✕</button>
+                
+                <!-- Shader Editor Overlay (hidden by default) -->
+                <div class="shader-overlay" id="shaderOverlay" style="display: none;">
+                    <div class="shader-panel">
+                        <div class="panel-header">
+                            <h3 id="shaderEditorTitle">Shader Editor</h3>
+                            <div class="shader-controls">
+                                <button class="control-btn test-btn">test</button>
+                                <button class="control-btn run-btn">run</button>
+                                <button class="close-btn" onclick="toggleShaderPanel()">✕</button>
+                            </div>
+                        </div>
+                        <div class="shader-editor">
+                            <textarea class="code-editor" rows="25" spellcheck="false"></textarea>
                         </div>
                     </div>
-                    <div class="shader-editor">
-                        <textarea class="code-editor" rows="25">
-#version 300 es
-precision highp float;
-
-uniform vec2 glResolution;
-uniform float glTime;
-uniform sampler2D uTexture;
-
-in vec2 glCoord;
-in vec2 glUV;
-out vec4 fragColor;
-
-void main() {
-    vec2 uv = glUV;
-    vec4 color = texture(uTexture, uv);
-    
-    // Simple blur effect
-    vec2 texelSize = 1.0 / glResolution;
-    vec4 blur = vec4(0.0);
-    
-    for(int x = -2; x <= 2; x++) {
-        for(int y = -2; y <= 2; y++) {
-            blur += texture(uTexture, uv + vec2(x, y) * texelSize);
-        }
-    }
-    
-    fragColor = blur / 25.0;
-}
-                        </textarea>
-                    </div>
                 </div>
-            </div>
-        </div>
+            </div> <!-- End of node-graph -->
+        </div> <!-- End of center-panel -->
 
         <!-- Right Column: Properties Panel -->
         <div class="right-panel">
-            <!-- Node Properties (when node selected) -->
+            <!-- Node Properties -->
             <div class="properties-panel" id="nodeProperties">
                 <div class="panel-header">
-                    <h3>Blur Effect Properties</h3>
+                    <h3>Node Properties</h3>
+                    <button class="control-btn docs-btn" id="docsBtn">docs</button>
                 </div>
                 <div class="properties-content">
-                    <div class="property-group">
-                        <h4>Uniforms</h4>
-                        <div class="property-item">
-                            <label>uRadius</label>
-                            <div class="uniform-controls">
-                                <select class="uniform-type">
-                                    <option value="slider">Slider</option>
-                                    <option value="constant">Constant</option>
-                                    <option value="sine">Sine</option>
-                                    <option value="toggle">Toggle</option>
-                                </select>
-                                <input type="range" min="0" max="10" value="2" class="slider">
-                                <span class="value">2.0</span>
-                            </div>
-                        </div>
-                        <div class="property-item">
-                            <label>uIntensity</label>
-                            <div class="uniform-controls">
-                                <select class="uniform-type">
-                                    <option value="slider">Slider</option>
-                                    <option value="constant">Constant</option>
-                                    <option value="sine">Sine</option>
-                                    <option value="toggle">Toggle</option>
-                                </select>
-                                <input type="range" min="0" max="2" step="0.1" value="1" class="slider">
-                                <span class="value">1.0</span>
-                            </div>
-                        </div>
-                        <button class="add-uniform-btn">+ Add Uniform</button>
-                    </div>
-                    
-                    <div class="property-group">
-                        <h4>Inputs</h4>
-                        <div class="input-item">
-                            <label>uTexture</label>
-                            <select class="input-source">
-                                <option value="source">Source</option>
-                                <option value="video1">Video Node</option>
-                                <option value="canvas1">Canvas Node</option>
-                            </select>
-                            <button class="remove-input">✕</button>
-                        </div>
-                        <button class="add-input-btn">+ Add Input</button>
-                    </div>
-                    
-                    <div class="property-group">
-                        <h4 class="collapsible-header">Advanced <span class="toggle">+</span></h4>
-                        <div class="collapsible-content" style="display: none;">
-                            <div class="property-item">
-                                <label>Precision</label>
-                                <select class="dropdown">
-                                    <option value="float">Float</option>
-                                    <option value="unsigned">Unsigned</option>
-                                </select>
-                            </div>
-                            <div class="property-item">
-                                <label>Min Filter</label>
-                                <select class="dropdown">
-                                    <option value="linear">Linear</option>
-                                    <option value="nearest">Nearest</option>
-                                </select>
-                            </div>
-                            <div class="property-item">
-                                <label>Mag Filter</label>
-                                <select class="dropdown">
-                                    <option value="linear">Linear</option>
-                                    <option value="nearest">Nearest</option>
-                                </select>
-                            </div>
-                            <div class="property-item">
-                                <label>Mipmaps</label>
-                                <input type="checkbox" checked class="checkbox">
-                            </div>
-                            <div class="property-item">
-                                <label>Clamping</label>
-                                <select class="dropdown">
-                                    <option value="clamp">Clamp</option>
-                                    <option value="repeat">Repeat</option>
-                                    <option value="mirror">Mirror</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Properties populated by JavaScript -->
                 </div>
             </div>
 
-            <!-- Settings/Export Panel at bottom -->
-            <div class="bottom-panel">
-                <div class="panel-tabs">
-                    <button class="tab-btn active" data-tab="settings">Settings</button>
-                    <button class="tab-btn" data-tab="globalUniforms">Global Uniforms</button>
-                    <button class="tab-btn" data-tab="export">Export</button>
+            <!-- Settings Tabs -->
+            <div class="settings-panel">
+                <div class="panel-header">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="settings">Settings</button>
+                        <button class="tab-btn" data-tab="globalUniforms">Global</button>
+                        <button class="tab-btn" data-tab="export">Export</button>
+                    </div>
                 </div>
-                
+
+                <!-- Settings Tab -->
                 <div class="tab-content" id="settingsTab">
                     <div class="settings-content">
-                        <div class="property-group">
-                            <h4>Canvas</h4>
-                            <div class="property-item">
-                                <label>Aspect Ratio</label>
-                                <select class="dropdown" id="resolutionSelect">
-                                    <option value="1:1">1:1 (Square)</option>
-                                    <option value="2:1">2:1 (Panoramic)</option>
-                                    <option value="4:3">4:3 (Standard)</option>
-                                    <option value="8:5">8:5 (Golden)</option>
-                                    <option value="16:9">16:9 (Widescreen)</option>
-                                </select>
-                            </div>
-                        </div>
                         
                         <div class="property-group">
                             <h4>Animation</h4>
                             <div class="property-item">
                                 <label>Loop</label>
-                                <input type="checkbox" class="checkbox" id="loopCheckbox">
+                                <input type="checkbox" id="loopCheckbox" class="checkbox">
                             </div>
                             <div class="property-item">
                                 <label>Duration (s)</label>
-                                <select class="dropdown" id="loopDuration" disabled>
-                                    <option value="4">4</option>
-                                    <option value="8">8</option>
-                                    <option value="12">12</option>
-                                    <option value="24">24</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="property-group">
-                            <h4>Performance</h4>
-                            <div class="property-item">
-                                <label>Preferred Performance</label>
-                                <select class="dropdown">
-                                    <option value="auto">Auto</option>
-                                    <option value="high">High</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="low">Low</option>
-                                </select>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Current Load</span>
-                                <span class="stat-value medium">Medium</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">FPS</span>
-                                <span class="stat-value">60</span>
+                                <input type="number" id="loopDuration" class="number-input" value="4" min="1" max="60" disabled>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- Global Uniforms Tab -->
                 <div class="tab-content" id="globalUniformsTab" style="display: none;">
-                    <div class="settings-content">
-                        <div class="property-group">
-                            <h4>Global Uniforms</h4>
-                            <p style="color: #888; font-size: 11px; margin-bottom: 12px;">Define uniforms that can be shared across multiple shaders</p>
-                            <div id="globalUniformsList">
-                                <!-- Global uniforms will be dynamically added here -->
-                            </div>
-                            <button class="add-uniform-btn" id="addGlobalUniformBtn">+ Add Global Uniform</button>
-                        </div>
+                    <div class="global-uniforms-content">
+                        <!-- Global uniforms populated by JavaScript -->
                     </div>
                 </div>
-                
+
+                <!-- Export Tab -->
                 <div class="tab-content" id="exportTab" style="display: none;">
                     <div class="export-content">
                         <div class="property-group">
-                            <h4>Project</h4>
-                            <div class="property-item">
-                                <label>Name</label>
-                                <input type="text" value="Untitled Project" class="text-input">
-                            </div>
+                            <h4>Export Options</h4>
+                            <button class="export-btn json-export-btn" onclick="exportGraphAsJSON()">Export as JSON</button>
                         </div>
                         
                         <div class="property-group">
-                            <h4>Recording</h4>
+                            <h4>Record Animation</h4>
+                            <div class="property-item">
+                                <label>Duration (s)</label>
+                                <input type="number" id="recordDuration" class="number-input" value="5" min="1" max="30">
+                            </div>
                             <div class="property-item">
                                 <label>Format</label>
                                 <select class="dropdown">
-                                    <option>MP4</option>
-                                    <option>WebM</option>
-                                    <option>GIF</option>
+                                    <option value="gif">GIF</option>
+                                    <option value="mp4">MP4</option>
+                                    <option value="webm">WebM</option>
                                 </select>
                             </div>
-                            <div class="property-item">
-                                <label>Duration (s)</label>
-                                <input type="number" value="5" min="1" max="60" class="number-input" id="recordDuration">
-                            </div>
-                            <div class="property-item">
-                                <label>Quality</label>
-                                <select class="dropdown">
-                                    <option>High</option>
-                                    <option>Medium</option>
-                                    <option>Low</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="export-actions">
-                            <button class="export-btn record">Record</button>
-                            <button class="export-btn snapshot">Snapshot</button>
-                            <button class="json-export-btn" onclick="exportGraphAsJSON()">Export as JSON</button>
                         </div>
                     </div>
                 </div>
@@ -465,11 +223,8 @@ void main() {
         </div>
     </div>
 
-    <!-- Include miniGL as a module -->
-    <script type="module">
-        import miniGL from '../lib/miniGL/miniGL.js';
-        window.miniGL = miniGL;
-    </script>
+    <!-- Console Panel (dynamically created) -->
+
     <script type="module" src="src/app.js"></script>
 </body>
 </html>

@@ -68,6 +68,10 @@ export class Console {
         this.updateDisplay();
     }
     
+    log(message, type = 'info') {
+        this.addMessage(type, message);
+    }
+    
     updateConsoleButton(hasErrors) {
         const consoleBtn = document.getElementById('consoleBtn');
         if (consoleBtn) {

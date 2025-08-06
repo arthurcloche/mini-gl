@@ -16,35 +16,29 @@ export class MiniGLBridge {
             const miniGLClass = await this.loadMiniGL();
             
             if (miniGLClass) {
-                console.log('Creating MiniGL with canvas:', this.canvas);
-                console.log('Canvas tagName:', this.canvas.tagName);
-                console.log('Canvas before MiniGL:', {
-                    width: this.canvas.width,
-                    height: this.canvas.height,
-                    clientWidth: this.canvas.clientWidth,
-                    clientHeight: this.canvas.clientHeight
-                });
+                // Get device pixel ratio with minimum of 2
+                const dpr = Math.max(2, window.devicePixelRatio || 1);
                 
-                // Create MiniGL instance with canvas - disable responsive
+                // Create MiniGL instance with canvas - enable antialiasing explicitly
                 this.minigl = new miniGLClass(this.canvas, { 
                     fps: 60,
-                    width: 512,
-                    height: 512
+                    width: 512 * dpr,
+                    height: 512 * dpr,
+                    contextOptions: {
+                        antialias: true,
+                        powerPreference: "high-performance",
+                        preserveDrawingBuffer: true,
+                        premultipliedAlpha: true,
+                        alpha: true
+                    }
                 });
                 editorState.minigl = this.minigl;
                 
                 // Set up ResizeObserver for panel resizing
                 this.setupResizeObserver();
                 
-                console.log('Canvas after MiniGL:', {
-                    width: this.canvas.width,
-                    height: this.canvas.height,
-                    clientWidth: this.canvas.clientWidth,
-                    clientHeight: this.canvas.clientHeight
-                });
-                console.log('MiniGL canvas:', this.minigl.canvas);
-                console.log('MiniGL canvas same as ours?', this.minigl.canvas === this.canvas);
-                console.log('MiniGL instance created:', this.minigl);
+                // Trigger initial resize to ensure proper canvas dimensions
+                this.triggerInitialResize();
                 
                 // Verify WebGL context 
                 const gl = this.minigl.gl;
@@ -53,7 +47,6 @@ export class MiniGLBridge {
                     this.startPlaceholderAnimation();
                     return;
                 }
-                console.log('miniGL WebGL2 context ready');
                 
                 // Test if we can create and render a simple shader
                 try {
@@ -66,24 +59,17 @@ export class MiniGLBridge {
                             vec2 uv = glCoord / glResolution;
                             fragColor = vec4(uv.x, uv.y, 0.5, 1.0);
                         }`);
-                    console.log('Test shader created successfully:', testShader);
-                    console.log('Test shader properties:', Object.keys(testShader));
                     
                     // Try to set it as output and render
                     this.minigl.output(testShader);
-                    console.log('Test shader set as output');
                     
                     // Check if render actually starts
                     const renderResult = this.minigl.render();
-                    console.log('Render method called, result:', renderResult);
-                    console.log('Animation ID after render:', this.minigl._animationId);
                     
                     // Force a manual render to test
                     setTimeout(() => {
-                        console.log('Forcing manual render test');
                         if (this.minigl.renderToScreen) {
                             this.minigl.renderToScreen();
-                            console.log('Manual render to screen called');
                         }
                     }, 100);
                     
@@ -95,10 +81,8 @@ export class MiniGLBridge {
                 // Start render loop
                 this.startRenderLoop();
                 
-                console.log('MiniGL Bridge initialized with real miniGL');
             } else {
                 // Fallback to placeholder
-                console.log('MiniGL not found, using placeholder mode');
                 this.startPlaceholderAnimation();
             }
             
@@ -132,11 +116,9 @@ export class MiniGLBridge {
     
     setupDefaultScene() {
         // Don't create default scene - let the app.js handle it
-        console.log('MiniGL scene ready for nodes');
     }
     
     startPlaceholderAnimation() {
-        console.log('Starting placeholder animation on canvas:', this.canvas);
         const ctx = this.canvas.getContext('2d');
         if (!ctx) {
             console.error('Failed to get 2D context for canvas');
@@ -185,11 +167,8 @@ export class MiniGLBridge {
     startRenderLoop() {
         if (!this.minigl) return;
         
-        console.log('miniGL instance:', this.minigl);
-        console.log('miniGL methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(this.minigl)));
         
         // Don't start render here, let it start when output is set
-        console.log('Render loop ready to start when output is set');
     }
     
     stopRenderLoop() {
@@ -210,46 +189,142 @@ export class MiniGLBridge {
         
         switch (property) {
             case 'url':
-                if (node.type === 'Texture' || node.type === 'Video') {
-                    // For textures and videos, we need to recreate the node with new URL
-                    editorState.miniglNodes.delete(nodeId);
-                    const newMiniglNode = editorState.createMiniGLNode(node);
+                if (node.type === 'Texture') {
+                    // Store the old miniGL node reference
+                    const oldMiniglNode = editorState.miniglNodes.get(nodeId);
                     
-                    // Reconnect any existing connections
-                    editorState.connections.forEach(conn => {
-                        if (conn.from === nodeId || conn.to === nodeId) {
-                            const fromMiniGL = editorState.miniglNodes.get(conn.from);
-                            const toMiniGL = editorState.miniglNodes.get(conn.to);
-                            if (fromMiniGL && toMiniGL) {
-                                const toNode = editorState.getNode(conn.to);
-                                if (toNode.type === 'Shader' || toNode.type === 'Feedback') {
-                                    toMiniGL.connect('glTexture', fromMiniGL);
+                    // Set loading state
+                    node.loadingState = 'loading';
+                    editorState.triggerUpdate();
+                    
+                    // Preload the new image first
+                    const testImg = new Image();
+                    
+                    // Check if URL is same-origin
+                    let isSameOrigin = false;
+                    try {
+                        const urlObj = new URL(value, window.location.href);
+                        isSameOrigin = urlObj.origin === window.location.origin;
+                    } catch (e) {
+                        // Relative URLs are same-origin
+                        isSameOrigin = true;
+                    }
+                    
+                    // Set crossOrigin for external URLs (same as MiniGL does)
+                    if (!isSameOrigin) {
+                        testImg.crossOrigin = "anonymous";
+                    }
+                    
+                    testImg.onload = () => {
+                        console.log('New image loaded successfully:', value);
+                        
+                        // Now that image is loaded, update the node
+                        node.url = value;
+                        node.loadingState = 'loaded';
+                        
+                        // Delete old node and create new one with loaded image
+                        editorState.miniglNodes.delete(nodeId);
+                        const newMiniglNode = editorState.createMiniGLNode(node);
+                        
+                        // Reconnect connections
+                        editorState.connections.forEach(conn => {
+                            if (conn.from === nodeId || conn.to === nodeId) {
+                                const fromMiniGL = editorState.miniglNodes.get(conn.from);
+                                const toMiniGL = editorState.miniglNodes.get(conn.to);
+                                if (fromMiniGL && toMiniGL) {
+                                    const toNode = editorState.getNode(conn.to);
+                                    if (toNode.type === 'Shader' || toNode.type === 'Feedback') {
+                                        toMiniGL.connect('glTexture', fromMiniGL);
+                                    } else if (toNode.type === 'Blend') {
+                                        // Handle Blend node connections
+                                        const existingConnections = editorState.connections.filter(c => c.to === conn.to);
+                                        if (existingConnections.length === 1) {
+                                            toMiniGL.connect('glBase', fromMiniGL);
+                                        } else {
+                                            toMiniGL.connect('glBlend', fromMiniGL);
+                                        }
+                                    }
                                 }
                             }
+                        });
+                        
+                        // Update output if needed
+                        if (editorState.outputNode === nodeId) {
+                            editorState.setOutputNode(nodeId);
                         }
-                    });
+                        
+                        editorState.triggerUpdate();
+                    };
                     
-                    // Update output if this was the output node
-                    if (editorState.outputNode === nodeId) {
-                        editorState.setOutputNode(nodeId);
-                    }
+                    testImg.onerror = (error) => {
+                        console.error('Failed to load image:', value);
+                        
+                        // Provide helpful error message
+                        if (!isSameOrigin) {
+                            console.error('This might be a CORS issue. The image server needs to send proper Access-Control-Allow-Origin headers.');
+                            console.info('Try using a CORS-enabled image service like Lorem Picsum (https://picsum.photos/800/600) or upload a local file.');
+                        }
+                        
+                        node.loadingState = 'error';
+                        
+                        // Keep the old texture node if new image fails
+                        if (oldMiniglNode) {
+                            console.log('Keeping previous texture due to load failure');
+                        }
+                        
+                        editorState.triggerUpdate();
+                    };
+                    
+                    // Start loading the image
+                    testImg.src = value;
                 }
                 break;
                 
             case 'shader':
-                if (node.type === 'Shader' || node.type === 'Feedback') {
+                if (node.type === 'Shader' || node.type === 'Feedback' || 
+                    node.type === 'Grayscale' || node.type === 'Blur' || 
+                    node.type === 'LensDistortion') {
+                    // Store existing connections before recreating
+                    const connectionsToRestore = editorState.connections.filter(conn => 
+                        conn.from === nodeId || conn.to === nodeId
+                    );
+                    
                     // For shader nodes, we need to recreate with new shader
                     editorState.miniglNodes.delete(nodeId);
                     const newMiniglNode = editorState.createMiniGLNode(node);
                     
-                    // Reconnect any existing connections
-                    editorState.connections.forEach(conn => {
-                        if (conn.from === nodeId || conn.to === nodeId) {
-                            const fromMiniGL = editorState.miniglNodes.get(conn.from);
-                            const toMiniGL = editorState.miniglNodes.get(conn.to);
-                            if (fromMiniGL && toMiniGL) {
+                    // Reconnect using the proper input names
+                    connectionsToRestore.forEach(conn => {
+                        const fromMiniGL = editorState.miniglNodes.get(conn.from);
+                        const toMiniGL = editorState.miniglNodes.get(conn.to);
+                        
+                        if (fromMiniGL && toMiniGL) {
+                            if (conn.to === nodeId) {
+                                // This node is receiving input
+                                const toNode = editorState.getNode(nodeId);
+                                const inputConnections = connectionsToRestore.filter(c => c.to === nodeId);
+                                const inputIndex = inputConnections.indexOf(conn);
+                                
+                                if (toNode.inputs && toNode.inputs[inputIndex]) {
+                                    toMiniGL.connect(toNode.inputs[inputIndex], fromMiniGL);
+                                } else {
+                                    toMiniGL.connect('glTexture', fromMiniGL);
+                                }
+                            } else if (conn.from === nodeId) {
+                                // This node is providing output to another
                                 const toNode = editorState.getNode(conn.to);
-                                if (toNode.type === 'Shader' || toNode.type === 'Feedback') {
+                                const inputConnections = editorState.connections.filter(c => c.to === conn.to);
+                                const inputIndex = inputConnections.indexOf(conn);
+                                
+                                if (toNode.inputs && toNode.inputs[inputIndex]) {
+                                    toMiniGL.connect(toNode.inputs[inputIndex], fromMiniGL);
+                                } else if (toNode.type === 'Blend') {
+                                    if (inputConnections.length === 1) {
+                                        toMiniGL.connect('glBase', fromMiniGL);
+                                    } else {
+                                        toMiniGL.connect('glBlend', fromMiniGL);
+                                    }
+                                } else {
                                     toMiniGL.connect('glTexture', fromMiniGL);
                                 }
                             }
@@ -264,31 +339,120 @@ export class MiniGLBridge {
                 break;
                 
             case 'canvasCode':
-                if (node.type === 'Canvas' && miniglNode.update) {
-                    try {
-                        const updateFunction = new Function('ctx', 'width', 'height', 'frame', value);
-                        miniglNode.update(updateFunction);
-                        node.canvasCode = value;
-                    } catch (error) {
-                        console.error('Invalid canvas code:', error);
+                if (node.type === 'Canvas') {
+                    // For canvas code changes, we need to recreate the node
+                    editorState.miniglNodes.delete(nodeId);
+                    node.canvasCode = value;
+                    const newMiniglNode = editorState.createMiniGLNode(node);
+                    
+                    // Update output if this was the output node
+                    if (editorState.outputNode === nodeId) {
+                        editorState.setOutputNode(nodeId);
                     }
                 }
                 break;
                 
             case 'uniform':
                 // value should be {name: string, value: any}
-                if (miniglNode.uniform) {
-                    miniglNode.uniform(value.name, value.value);
+                if (miniglNode.updateUniform) {
+                    miniglNode.updateUniform(value.name, value.value);
                     if (node.uniforms[value.name]) {
                         node.uniforms[value.name].value = value.value;
+                    }
+                    
+                    // Force a render to show the uniform change immediately
+                    if (this.minigl && this.minigl.renderToScreen) {
+                        this.minigl.renderToScreen();
                     }
                 }
                 break;
                 
             case 'blendMode':
-                if (node.type === 'Blend' && miniglNode.mode) {
-                    miniglNode.mode(value);
+                if (node.type === 'Blend') {
+                    // Update the blend mode uniform
+                    const blendModes = {
+                        normal: 0,
+                        multiply: 1,
+                        screen: 2,
+                        add: 3,
+                        overlay: 4
+                    };
+                    
+                    const modeValue = blendModes[value] || 0;
                     node.blendMode = value;
+                    
+                    // Update the uniform directly
+                    if (miniglNode.updateUniform) {
+                        miniglNode.updateUniform('glBlendMode', modeValue);
+                    } else if (miniglNode.uniforms) {
+                        miniglNode.uniforms.glBlendMode = modeValue;
+                    }
+                    
+                    // Force a render
+                    if (this.minigl && this.minigl.renderToScreen) {
+                        this.minigl.renderToScreen();
+                    }
+                }
+                break;
+                
+            case 'sizeMode':
+                if (node.type === 'Texture') {
+                    // For size mode changes, we need to recreate the node
+                    node.sizeMode = value;
+                    editorState.miniglNodes.delete(nodeId);
+                    editorState.createMiniGLNode(node);
+                    
+                    // Reconnect connections
+                    editorState.connections.forEach(conn => {
+                        if (conn.from === nodeId || conn.to === nodeId) {
+                            const fromMiniGL = editorState.miniglNodes.get(conn.from);
+                            const toMiniGL = editorState.miniglNodes.get(conn.to);
+                            if (fromMiniGL && toMiniGL) {
+                                const toNode = editorState.getNode(conn.to);
+                                if (toNode.type === 'Shader' || toNode.type === 'Feedback') {
+                                    toMiniGL.connect('glTexture', fromMiniGL);
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Update output if needed
+                    if (editorState.outputNode === nodeId) {
+                        editorState.setOutputNode(nodeId);
+                    }
+                }
+                break;
+                
+            case 'animate':
+                if (node.type === 'Canvas') {
+                    // Store animate state on the node
+                    node.animate = value;
+                    
+                    console.log('Animation toggled:', {
+                        nodeId: nodeId,
+                        animate: value,
+                        miniglNodeExists: !!miniglNode
+                    });
+                    
+                    // The animation logic is now handled in the update override
+                    // which checks node.animate dynamically, so just ensure render loop is running
+                    if (value && this.minigl && !this.minigl.isRunning()) {
+                        console.log('Starting render loop for animation');
+                        this.minigl.render();
+                    }
+                }
+                break;
+                
+            case 'canvasSize':
+                if (node.type === 'Canvas') {
+                    // For canvas size changes, we need to recreate the node
+                    editorState.miniglNodes.delete(nodeId);
+                    const newMiniglNode = editorState.createMiniGLNode(node);
+                    
+                    // Update output if this was the output node
+                    if (editorState.outputNode === nodeId) {
+                        editorState.setOutputNode(nodeId);
+                    }
                 }
                 break;
         }
@@ -303,55 +467,218 @@ export class MiniGLBridge {
             this.resizeObserver.disconnect();
         }
         
+        let resizeTimeout;
         this.resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                // Get current aspect ratio from settings
-                const resolutionSelect = document.getElementById('resolutionSelect');
-                if (!resolutionSelect) return;
-                
-                const ratio = resolutionSelect.value;
-                const [widthRatio, heightRatio] = ratio.split(':').map(Number);
-                const aspectRatio = widthRatio / heightRatio;
-                
-                // Calculate optimal size to fit within container
-                const containerRect = entry.contentRect;
-                const containerAspect = containerRect.width / containerRect.height;
-                let width, height;
-                
-                if (aspectRatio > containerAspect) {
-                    // Canvas is wider than container - fit to width
-                    width = Math.floor(containerRect.width);
-                    height = Math.floor(width / aspectRatio);
-                } else {
-                    // Canvas is taller than container - fit to height
-                    height = Math.floor(containerRect.height);
-                    width = Math.floor(height * aspectRatio);
+            // Debounce resize events
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                for (const entry of entries) {
+                    // Responsive mode: fill the entire container
+                    const containerRect = entry.contentRect;
+                    let width = Math.floor(containerRect.width);
+                    let height = Math.floor(containerRect.height);
+                    
+                    // Ensure minimum size
+                    width = Math.max(256, width);
+                    height = Math.max(256, height);
+                    
+                    // Get device pixel ratio with minimum of 2
+                    const dpr = Math.max(2, window.devicePixelRatio || 1);
+                    
+                    // Update canvas dimensions with DPR
+                    this.canvas.width = width * dpr;
+                    this.canvas.height = height * dpr;
+                    
+                    // Update CSS to display size (not pixel size)
+                    this.canvas.style.width = width + 'px';
+                    this.canvas.style.height = height + 'px';
+                    this.canvas.style.position = 'absolute';
+                    this.canvas.style.left = '50%';
+                    this.canvas.style.top = '50%';
+                    this.canvas.style.transform = 'translate(-50%, -50%)';
+                    
+                    // Update miniGL resolution - resize() reads from canvas dimensions
+                    if (this.minigl) {
+                        // MiniGL's resize() method reads dimensions from the canvas
+                        // and automatically resizes ALL nodes to match canvas dimensions
+                        if (this.minigl.resize) {
+                            this.minigl.resize();
+                        }
+                        
+                        // Force immediate render after resize
+                        if (this.minigl.renderToScreen) {
+                            this.minigl.renderToScreen();
+                        }
+                    }
                 }
+            }, 100);
+        });
+        
+        this.resizeObserver.observe(container);
+    }
+    
+    triggerInitialResize() {
+        const container = this.canvas?.parentElement;
+        if (!container) return;
+        
+        // Responsive mode: fill the entire container
+        const containerRect = container.getBoundingClientRect();
+        let width = Math.floor(containerRect.width);
+        let height = Math.floor(containerRect.height);
+        
+        // Ensure minimum size
+        width = Math.max(256, width);
+        height = Math.max(256, height);
+        
+        // Get device pixel ratio with minimum of 2
+        const dpr = Math.max(2, window.devicePixelRatio || 1);
+        
+        // Update canvas dimensions with DPR
+        this.canvas.width = width * dpr;
+        this.canvas.height = height * dpr;
+        
+        // Update CSS to display size (not pixel size)
+        this.canvas.style.width = width + 'px';
+        this.canvas.style.height = height + 'px';
+        this.canvas.style.position = 'absolute';
+        this.canvas.style.left = '50%';
+        this.canvas.style.top = '50%';
+        this.canvas.style.transform = 'translate(-50%, -50%)';
+        
+        // Update miniGL resolution - resize() reads from canvas dimensions
+        if (this.minigl) {
+            // MiniGL's resize() method reads dimensions from the canvas
+            // and automatically resizes ALL nodes to match canvas dimensions
+            if (this.minigl.resize) {
+                this.minigl.resize();
+            }
+            
+            // Force immediate render after resize
+            if (this.minigl.renderToScreen) {
+                this.minigl.renderToScreen();
+            }
+        }
+    }
+    
+    resizeCanvasNodes(width, height) {
+        // Validate inputs to prevent NaN
+        if (!width || !height || isNaN(width) || isNaN(height)) {
+            console.warn('Invalid dimensions for resizeCanvasNodes:', width, height);
+            return;
+        }
+        
+        const dpr = Math.max(2, window.devicePixelRatio || 1);
+        const actualWidth = Math.round(width * dpr);
+        const actualHeight = Math.round(height * dpr);
+        
+        // Prevent resize if dimensions haven't changed
+        if (this._lastResizeWidth === actualWidth && this._lastResizeHeight === actualHeight) {
+            return;
+        }
+        this._lastResizeWidth = actualWidth;
+        this._lastResizeHeight = actualHeight;
+        
+        // Update nodes based on their sizeMode setting
+        editorState.nodes.forEach((node, nodeId) => {
+            // Default Canvas and Text nodes to responsive, Texture nodes must opt-in
+            const isResponsive = node.sizeMode === 'responsive' || 
+                (node.sizeMode === undefined && (node.type === 'Canvas' || node.type === 'Text'));
+            
+            if (isResponsive && (node.type === 'Canvas' || node.type === 'Text' || node.type === 'Texture')) {
                 
-                // Ensure minimum size and make it power of 2 friendly
-                width = Math.max(256, Math.round(width / 64) * 64);
-                height = Math.max(256, Math.round(height / 64) * 64);
+                // Update node dimensions
+                node.width = actualWidth;
+                node.height = actualHeight;
                 
-                // Update canvas dimensions
-                this.canvas.width = width;
-                this.canvas.height = height;
-                
-                // Update CSS to center in container
-                this.canvas.style.width = width + 'px';
-                this.canvas.style.height = height + 'px';
-                this.canvas.style.position = 'absolute';
-                this.canvas.style.left = '50%';
-                this.canvas.style.top = '50%';
-                this.canvas.style.transform = 'translate(-50%, -50%)';
-                
-                // Update miniGL resolution
-                if (this.minigl && this.minigl.resize) {
-                    this.minigl.resize(width, height);
+                // Get the existing miniGL node
+                const oldMiniglNode = editorState.miniglNodes.get(nodeId);
+                if (oldMiniglNode && editorState.minigl) {
+                    // If the node has a resize method, use it instead of recreating
+                    if (oldMiniglNode.resize && typeof oldMiniglNode.resize === 'function') {
+                        oldMiniglNode.resize(actualWidth, actualHeight);
+                        oldMiniglNode.dirty = true;
+                        
+                        // Force process the node
+                        if (oldMiniglNode.process && typeof oldMiniglNode.process === 'function') {
+                            oldMiniglNode.process(performance.now());
+                        }
+                    } else {
+                        // Need to recreate the node
+                        // Preserve the drawCallback if it exists
+                        if (oldMiniglNode._originalDrawCallback) {
+                            node._drawFunction = oldMiniglNode._originalDrawCallback;
+                        }
+                        
+                        // Remove old node
+                        editorState.miniglNodes.delete(nodeId);
+                        
+                        // Create new node with updated dimensions
+                        const newMiniglNode = editorState.createMiniGLNode(node);
+                        
+                        // If this is the output node, update the output
+                        if (editorState.outputNode === nodeId && newMiniglNode) {
+                            editorState.minigl.output(newMiniglNode);
+                        }
+                        
+                        // Handle connections - reconnect all inputs to this node
+                        const connections = editorState.connections.filter(c => c.to === nodeId);
+                        connections.forEach(conn => {
+                            const fromMiniGL = editorState.miniglNodes.get(conn.from);
+                            if (fromMiniGL && newMiniglNode) {
+                                try {
+                                    newMiniglNode.input(fromMiniGL);
+                                } catch (error) {
+                                    console.error('Error reconnecting node after resize:', error);
+                                }
+                            }
+                        });
+                        
+                        // Also reconnect outputs from this node
+                        const outputConnections = editorState.connections.filter(c => c.from === nodeId);
+                        outputConnections.forEach(conn => {
+                            const toMiniGL = editorState.miniglNodes.get(conn.to);
+                            if (toMiniGL && newMiniglNode) {
+                                try {
+                                    const toNode = editorState.getNode(conn.to);
+                                    if (toNode.type === 'Blend') {
+                                        const inputConnections = editorState.connections.filter(c => c.to === conn.to);
+                                        if (inputConnections.indexOf(conn) === 0) {
+                                            toMiniGL.connect('glBase', newMiniglNode);
+                                        } else {
+                                            toMiniGL.connect('glBlend', newMiniglNode);
+                                        }
+                                    } else if (toNode.type === 'Shader' || toNode.type === 'Feedback') {
+                                        toMiniGL.connect('glTexture', newMiniglNode);
+                                    }
+                                } catch (error) {
+                                    console.error('Error reconnecting outputs after resize:', error);
+                                }
+                            }
+                        });
+                    }
                 }
             }
         });
         
-        this.resizeObserver.observe(container);
+        // Mark all nodes in the pipeline as dirty to force full re-render
+        editorState.miniglNodes.forEach((miniglNode) => {
+            if (miniglNode.dirty !== undefined) {
+                miniglNode.dirty = true;
+            }
+        });
+        
+        // Force immediate render after resize
+        if (this.minigl && this.minigl.renderToScreen) {
+            this.minigl.renderToScreen();
+        }
+        
+        // Also update the properties panel to reflect new sizes
+        setTimeout(() => {
+            const propertiesPanel = window.propertiesPanel;
+            if (propertiesPanel) {
+                propertiesPanel.update();
+            }
+        }, 100);
     }
     
     dispose() {

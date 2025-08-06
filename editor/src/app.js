@@ -20,7 +20,6 @@ class MiniGLEditor {
     }
     
     async initialize() {
-        console.log('Initializing MiniGL Editor...');
         
         // Get preview canvas
         const previewCanvas = document.getElementById('preview');
@@ -29,9 +28,6 @@ class MiniGLEditor {
             return false;
         }
         
-        console.log('Preview canvas found:', previewCanvas);
-        console.log('Canvas dimensions:', previewCanvas.width, 'x', previewCanvas.height);
-        console.log('Canvas display style:', window.getComputedStyle(previewCanvas).display);
         
         // Initialize MiniGL bridge with the preview canvas
         miniGLBridge.canvas = previewCanvas;
@@ -57,68 +53,144 @@ class MiniGLEditor {
         window.toggleCanvasEditor = () => this.uiManager.toggleCanvasEditor();
         window.exportGraphAsJSON = () => this.exportGraph();
         window.matchWebGLCanvas = () => this.matchWebGLCanvas();
-        window.miniGLEditor.togglePause = () => this.togglePause();
-        window.miniGLEditor.resetTime = () => this.resetTime();
         
         // Initialize with some default nodes ONLY if miniGL is available
         if (miniGLBridge.minigl) {
-            console.log('miniGL is available, initializing default nodes');
             // Add a delay to ensure miniGL is fully ready
             setTimeout(() => {
                 this.initializeDefaultNodes();
             }, 500);
         } else {
-            console.log('miniGL not available yet, skipping default nodes');
         }
         
         // Initial UI update
         this.updateUI();
         
-        console.log('MiniGL Editor initialized successfully');
         return true;
     }
     
     initializeDefaultNodes() {
-        // Start with a simple shader node
-        const shaderNode = editorState.addNode('Shader', null, {x: 100, y: 100});
+        // Trigger initial resize for responsive nodes
+        setTimeout(() => {
+            miniGLBridge.triggerInitialResize();
+        }, 100);
         
-        // Set a simple gradient shader
-        if (shaderNode) {
-            shaderNode.shader = `#version 300 es
+        // Create 4 shader nodes for testing
+        const shaderA = editorState.addNode('Feedback', 'Red Circle', {x: 50, y: 50});
+        const shaderB = editorState.addNode('Shader', 'Green Circle', {x: 50, y: 200});
+        const shaderC = editorState.addNode('Shader', 'Yellow Mix', {x: 300, y: 125});
+        const shaderD = editorState.addNode('Shader', 'White Final', {x: 550, y: 125});
+        
+        // Feedback A - Red circle with fading trails - use default template with uSpeed
+        if (shaderA) {
+            shaderA.shader = editorState.getDefaultShader('Feedback');
+            shaderA.uniforms = editorState.getDefaultUniforms('Feedback');
+            editorState.miniglNodes.delete(shaderA.id);
+            editorState.createMiniGLNode(shaderA);
+        }
+        
+        // Shader B - Green circle
+        if (shaderB) {
+            shaderB.shader = `#version 300 es
 precision highp float;
 
 uniform vec2 glResolution;
-uniform float glTime;
-
+uniform vec3 glMouse;
 in vec2 glCoord;
 in vec2 glUV;
 out vec4 fragColor;
 
 void main() {
-    // Simple animated gradient using UV coordinates
-    vec2 uv = glUV;
-    vec3 col = 0.5 + 0.5 * cos(glTime * 0.001 + uv.xyx + vec3(0, 2, 4));
-    fragColor = vec4(col, 1.0);
+    // Convert UV to centered coordinates with aspect correction
+    vec2 uv = glUV * 2.0 - 1.0; // Convert from [0,1] to [-1,1]
+    float aspect = glResolution.x / glResolution.y;
+    uv.x *= aspect;
+    
+    // Convert mouse position from [0,1] to [-1,1]
+    vec2 mousePos = glMouse.xy * 2.0 - 1.0;
+    mousePos.x *= aspect;
+    
+    float radius = 0.4;
+    float dist = length(uv - mousePos);
+    
+    if (dist < radius) {
+        fragColor = vec4(0.0, 1.0, 0.0, 1.0); // Green
+    } else {
+        fragColor = vec4(0.0, 0.0, 0.0, 1.0); // Black
+    }
 }`;
-            
-            // Recreate the miniGL node with the shader
-            const miniglNode = editorState.miniglNodes.get(shaderNode.id);
-            if (miniglNode) {
-                editorState.miniglNodes.delete(shaderNode.id);
-                editorState.createMiniGLNode(shaderNode);
-            }
+            editorState.miniglNodes.delete(shaderB.id);
+            editorState.createMiniGLNode(shaderB);
         }
         
-        // Wait a bit then set as output
+        // Shader C - Mix A and B (should show yellow)
+        if (shaderC) {
+            shaderC.shader = `#version 300 es
+precision highp float;
+
+uniform sampler2D uTextureA;
+uniform sampler2D uTextureB;
+in vec2 glUV;
+out vec4 fragColor;
+
+void main() {
+    vec4 colorA = texture(uTextureA, glUV);
+    vec4 colorB = texture(uTextureB, glUV);
+    fragColor = colorA + colorB; // Additive blend
+}`;
+            shaderC.inputs = ['uTextureA', 'uTextureB'];
+            editorState.miniglNodes.delete(shaderC.id);
+            editorState.createMiniGLNode(shaderC);
+        }
+        
+        // Shader D - Add blue to C (should show white)
+        if (shaderD) {
+            shaderD.shader = `#version 300 es
+precision highp float;
+
+uniform vec2 glResolution;
+uniform sampler2D uTextureC;
+in vec2 glCoord;
+in vec2 glUV;
+out vec4 fragColor;
+
+void main() {
+    vec4 colorC = texture(uTextureC, glUV);
+    
+    // Convert UV to centered coordinates with aspect correction
+    vec2 uv = glUV * 2.0 - 1.0; // Convert from [0,1] to [-1,1]
+    float aspect = glResolution.x / glResolution.y;
+    uv.x *= aspect;
+    
+    float radius = 0.4;
+    float dist = length(uv);
+    
+    if (dist < radius) {
+        fragColor = colorC + vec4(0.0, 0.0, 1.0, 0.0); // Add blue
+    } else {
+        fragColor = colorC;
+    }
+}`;
+            shaderD.inputs = ['uTextureC'];
+            editorState.miniglNodes.delete(shaderD.id);
+            editorState.createMiniGLNode(shaderD);
+        }
+        
+        // Connect nodes after a delay
         setTimeout(() => {
-            if (shaderNode) {
-                // Set shader as selected node
-                editorState.selectNode(shaderNode.id);
+            if (shaderA && shaderB && shaderC && shaderD) {
+                // Connect A and B to C
+                editorState.connectNodes(shaderA.id, shaderC.id);
+                editorState.connectNodes(shaderB.id, shaderC.id);
                 
-                // Set shader as output node
-                editorState.setOutputNode(shaderNode.id);
+                // Connect C to D
+                editorState.connectNodes(shaderC.id, shaderD.id);
+                
+                // Set D as output
+                editorState.setOutputNode(shaderD.id);
+                editorState.selectNode(shaderD.id);
             }
-        }, 100);
+        }, 200);
     }
     
     updateUI() {
@@ -178,40 +250,45 @@ void main() {
     
     togglePause() {
         const pauseBtn = document.getElementById('pauseBtn');
-        if (miniGLBridge.minigl) {
+        if (!miniGLBridge.minigl) {
+            console.error('miniGL not available for pause/resume');
+            return;
+        }
+        
+        try {
             const isRunning = miniGLBridge.minigl.isRunning();
-            console.log('Toggle pause, isRunning:', isRunning, '_animationId:', miniGLBridge.minigl._animationId);
             
             if (isRunning) {
                 // Pause
                 miniGLBridge.minigl.stop();
                 miniGLBridge.isPaused = true;
                 if (pauseBtn) pauseBtn.textContent = 'play';
-                console.log('Paused render');
             } else {
                 // Resume
                 miniGLBridge.minigl.start();
                 miniGLBridge.isPaused = false;
                 if (pauseBtn) pauseBtn.textContent = 'pause';
-                console.log('Resumed render');
             }
-        } else {
-            console.error('miniGL not available for pause/resume');
+        } catch (error) {
+            console.error('Error in togglePause:', error);
         }
     }
     
     resetTime() {
-        if (miniGLBridge.minigl) {
-            console.log('Resetting time...');
+        if (!miniGLBridge.minigl) {
+            console.error('miniGL not available for reset');
+            return;
+        }
+        
+        try {
             const wasRunning = miniGLBridge.minigl.isRunning();
             
             // Stop the render loop
             miniGLBridge.minigl.stop();
             
-            // Reset the internal clock
+            // Reset the internal clock and frame counter
             miniGLBridge.minigl.clock = 0;
             miniGLBridge.minigl.frameId = 0;
-            console.log('Clock reset to 0');
             
             // Reset UI frame counter
             this.uiManager.frameCount = 0;
@@ -219,19 +296,16 @@ void main() {
             if (frameCountEl) frameCountEl.textContent = '0';
             
             // Force a single render to show the reset state
-            if (miniGLBridge.minigl.renderToScreen) {
-                miniGLBridge.minigl.renderToScreen();
-            }
+            miniGLBridge.minigl.renderToScreen();
             
-            // Restart if it was running and not paused
-            if (wasRunning && !miniGLBridge.isPaused) {
+            // Restart if it was running
+            if (wasRunning) {
                 setTimeout(() => {
                     miniGLBridge.minigl.start();
-                    console.log('Restarted render after reset');
                 }, 50);
             }
-        } else {
-            console.error('miniGL not available for reset');
+        } catch (error) {
+            console.error('Error in resetTime:', error);
         }
     }
     
@@ -246,6 +320,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!success) {
         console.error('Failed to initialize editor');
     }
+    
+    // Methods are already available on the editor instance
     
     // Make console available globally
     window.miniGLEditor.console = editor.console;

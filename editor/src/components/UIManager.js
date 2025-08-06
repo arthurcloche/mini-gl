@@ -11,7 +11,6 @@ export class UIManager {
     }
     
     initialize() {
-        console.log('Initializing UI Manager...');
         
         // Initialize tabs
         this.initializeTabs();
@@ -65,66 +64,68 @@ export class UIManager {
     }
     
     initializeSettings() {
-        // Aspect ratio change
-        const resolutionSelect = document.getElementById('resolutionSelect');
-        if (resolutionSelect) {
-            resolutionSelect.addEventListener('change', function() {
-                const ratio = this.value;
-                const canvas = document.getElementById('preview');
-                if (canvas && miniGLBridge.minigl) {
-                    const container = canvas.parentElement;
-                    if (!container) return;
-                    
-                    const containerRect = container.getBoundingClientRect();
-                    const [widthRatio, heightRatio] = ratio.split(':').map(Number);
-                    const aspectRatio = widthRatio / heightRatio;
-                    
-                    // Calculate optimal size to fit within container
-                    const containerAspect = containerRect.width / containerRect.height;
-                    let width, height;
-                    
-                    if (aspectRatio > containerAspect) {
-                        // Canvas is wider than container - fit to width
-                        width = Math.floor(containerRect.width);
-                        height = Math.floor(width / aspectRatio);
-                    } else {
-                        // Canvas is taller than container - fit to height
-                        height = Math.floor(containerRect.height);
-                        width = Math.floor(height * aspectRatio);
-                    }
-                    
-                    // Ensure minimum size and make it power of 2 friendly
-                    width = Math.max(256, Math.round(width / 64) * 64);
-                    height = Math.max(256, Math.round(height / 64) * 64);
-                    
-                    // Update canvas dimensions
-                    canvas.width = width;
-                    canvas.height = height;
-                    
-                    // Update CSS to center in container
-                    canvas.style.width = width + 'px';
-                    canvas.style.height = height + 'px';
-                    canvas.style.position = 'absolute';
-                    canvas.style.left = '50%';
-                    canvas.style.top = '50%';
-                    canvas.style.transform = 'translate(-50%, -50%)';
-                    
-                    // Update miniGL resolution
+        // Set up responsive canvas resizing
+        const canvas = document.getElementById('preview');
+        const previewPanel = document.querySelector('.preview-canvas');
+        
+        if (canvas && previewPanel) {
+            const resizeCanvas = () => {
+                // Check if miniGL is ready
+                if (!miniGLBridge.minigl) return;
+                const container = canvas.parentElement;
+                if (!container) return;
+                
+                // Get container dimensions
+                const containerRect = container.getBoundingClientRect();
+                let width = Math.floor(containerRect.width);
+                let height = Math.floor(containerRect.height);
+                
+                // Ensure minimum size
+                width = Math.max(256, width);
+                height = Math.max(256, height);
+                
+                // Device pixel ratio
+                const dpr = Math.max(2, window.devicePixelRatio || 1);
+                
+                // Update canvas dimensions
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+                canvas.style.position = 'absolute';
+                canvas.style.left = '50%';
+                canvas.style.top = '50%';
+                canvas.style.transform = 'translate(-50%, -50%)';
+                
+                // Resize miniGL (only if valid dimensions)
+                if (width && height && !isNaN(width) && !isNaN(height)) {
+                    // MiniGL's resize() method reads dimensions from the canvas
+                    // and automatically resizes ALL nodes to match canvas dimensions
                     if (miniGLBridge.minigl.resize) {
-                        miniGLBridge.minigl.resize(width, height);
+                        miniGLBridge.minigl.resize();
                     }
-                    
-                    // Update all nodes to new resolution
-                    editorState.nodes.forEach((node, id) => {
-                        const miniglNode = editorState.miniglNodes.get(id);
-                        if (miniglNode && miniglNode.resize) {
-                            miniglNode.resize(width, height);
-                        }
-                    });
-                    
-                    console.log(`Canvas resized to ${width}x${height} (${ratio})`);
                 }
+                
+                // Force render
+                setTimeout(() => {
+                    if (miniGLBridge.minigl && miniGLBridge.minigl.renderToScreen) {
+                        miniGLBridge.minigl.renderToScreen();
+                    }
+                }, 100);
+            };
+            
+            // Delay initial resize to ensure MiniGL is ready
+            setTimeout(() => {
+                resizeCanvas();
+            }, 200);
+            
+            // Set up resize observer
+            let resizeTimeout;
+            const resizeObserver = new ResizeObserver(() => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(resizeCanvas, 100);
             });
+            resizeObserver.observe(previewPanel);
         }
         
         // Loop checkbox
@@ -270,9 +271,40 @@ export class UIManager {
     }
     
     handleDelete(nodeId) {
-        if (confirm('Delete this node?')) {
+        const sceneNode = document.querySelector(`[data-node-id="${nodeId}"]`);
+        if (!sceneNode) return;
+        
+        // Create confirmation UI
+        const deleteBtn = sceneNode.querySelector('.action-btn[title="Delete"]');
+        if (!deleteBtn) return;
+        
+        // Change button to confirm state
+        const originalContent = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '✓';
+        deleteBtn.style.background = '#8a2a2a';
+        deleteBtn.style.color = '#ff6b6b';
+        deleteBtn.title = 'Confirm Delete';
+        
+        // Add one-time click handler for confirmation
+        const confirmHandler = (e) => {
+            e.stopPropagation();
             editorState.removeNode(nodeId);
-        }
+            deleteBtn.removeEventListener('click', confirmHandler);
+        };
+        
+        // Add timeout to revert if not confirmed
+        const timeoutId = setTimeout(() => {
+            deleteBtn.innerHTML = originalContent;
+            deleteBtn.style.background = '';
+            deleteBtn.style.color = '';
+            deleteBtn.title = 'Delete';
+            deleteBtn.removeEventListener('click', confirmHandler);
+        }, 3000);
+        
+        deleteBtn.addEventListener('click', (e) => {
+            clearTimeout(timeoutId);
+            confirmHandler(e);
+        }, { once: true });
     }
     
     initializeCollapsibles() {
@@ -373,7 +405,9 @@ export class UIManager {
         
         if (this.isShaderPanelOpen && editorState.selectedNode) {
             const node = editorState.getNode(editorState.selectedNode);
-            if (node && (node.type === 'Shader' || node.type === 'Feedback')) {
+            if (node && (node.type === 'Shader' || node.type === 'Feedback' || 
+                        node.type === 'Grayscale' || node.type === 'Blur' || 
+                        node.type === 'LensDistortion')) {
                 const codeEditor = shaderOverlay.querySelector('.code-editor');
                 const headerTitle = shaderOverlay.querySelector('.panel-header h3');
                 
@@ -391,21 +425,30 @@ export class UIManager {
         const testBtn = document.querySelector('.test-btn');
         const codeEditor = document.querySelector('.code-editor');
         
-        if (runBtn && !runBtn.hasAttribute('data-initialized')) {
-            runBtn.setAttribute('data-initialized', 'true');
-            runBtn.addEventListener('click', () => {
-                if (codeEditor) {
-                    const node = editorState.getNode(nodeId);
-                    if (node) {
-                        // Update shader code
-                        node.shader = codeEditor.value;
-                        
-                        // Update miniGL node
-                        miniGLBridge.updateNodeProperty(nodeId, 'shader', codeEditor.value);
-                    }
+        // Remove old listener and add new one for current node
+        const newRunBtn = runBtn.cloneNode(true);
+        runBtn.parentNode.replaceChild(newRunBtn, runBtn);
+        
+        newRunBtn.addEventListener('click', () => {
+            if (codeEditor && this.editingNodeId) {
+                const node = editorState.getNode(this.editingNodeId);
+                if (node) {
+                    // Update shader code
+                    node.shader = codeEditor.value;
+                    
+                    // Update miniGL node by recreating it
+                    miniGLBridge.updateNodeProperty(this.editingNodeId, 'shader', codeEditor.value);
+                    
+                    // Visual feedback
+                    newRunBtn.style.background = '#2a4a2a';
+                    newRunBtn.style.color = '#51cf66';
+                    setTimeout(() => {
+                        newRunBtn.style.background = '';
+                        newRunBtn.style.color = '';
+                    }, 500);
                 }
-            });
-        }
+            }
+        });
         
         if (testBtn && !testBtn.hasAttribute('data-initialized')) {
             testBtn.setAttribute('data-initialized', 'true');
@@ -413,10 +456,11 @@ export class UIManager {
                 if (codeEditor && miniGLBridge.minigl) {
                     // Test shader compilation
                     const shaderCode = codeEditor.value;
-                    const gl = document.getElementById('preview')?.getContext('webgl2');
+                    // Use the existing miniGL context
+                    const gl = miniGLBridge.minigl.gl;
                     
                     if (!gl) {
-                        console.error('WebGL2 context not available');
+                        console.error('WebGL2 context not available from miniGL');
                         testBtn.style.background = '#8a2a2a';
                         testBtn.style.color = '#ff6b6b';
                         setTimeout(() => {
@@ -438,22 +482,32 @@ export class UIManager {
                         gl.deleteShader(shader);
                         
                         if (success) {
-                            console.log('Shader compiled successfully!');
                             testBtn.style.background = '#2a4a2a';
                             testBtn.style.color = '#51cf66';
                             
-                            // Clear any shader errors from console
+                            // Log success to console component
                             if (window.miniGLEditor?.console) {
-                                window.miniGLEditor.console.logShaderWarning('Shader compiled successfully');
+                                window.miniGLEditor.console.log('Shader compiled successfully!', 'success');
+                                // Only open console if there were warnings
+                                if (infoLog && infoLog.trim()) {
+                                    window.miniGLEditor.console.log('Warnings: ' + infoLog, 'warning');
+                                    if (!window.miniGLEditor.console.isOpen) {
+                                        window.miniGLEditor.console.toggle();
+                                    }
+                                }
                             }
                         } else {
-                            console.error('Shader compilation failed:', infoLog);
                             testBtn.style.background = '#8a2a2a';
                             testBtn.style.color = '#ff6b6b';
                             
-                            // Log to console component
+                            // Log error to console component
                             if (window.miniGLEditor?.console) {
-                                window.miniGLEditor.console.logShaderError(infoLog);
+                                window.miniGLEditor.console.log('Shader compilation failed!', 'error');
+                                window.miniGLEditor.console.log(infoLog, 'error');
+                                // Open console to show errors
+                                if (!window.miniGLEditor.console.isOpen) {
+                                    window.miniGLEditor.console.toggle();
+                                }
                             }
                         }
                         
@@ -464,12 +518,14 @@ export class UIManager {
                         }, 2000);
                         
                     } catch (error) {
-                        console.error('Shader test error:', error);
                         testBtn.style.background = '#8a2a2a';
                         testBtn.style.color = '#ff6b6b';
                         
                         if (window.miniGLEditor?.console) {
-                            window.miniGLEditor.console.logShaderError(error.message);
+                            window.miniGLEditor.console.log('Shader test error: ' + error.message, 'error');
+                            if (!window.miniGLEditor.console.isOpen) {
+                                window.miniGLEditor.console.toggle();
+                            }
                         }
                         
                         setTimeout(() => {

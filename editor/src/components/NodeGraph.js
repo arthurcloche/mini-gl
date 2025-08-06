@@ -14,7 +14,6 @@ export class NodeGraph {
     }
     
     initialize() {
-        console.log('Initializing Node Graph...');
         
         // Initialize graph controls
         this.initializeGraphControls();
@@ -26,6 +25,7 @@ export class NodeGraph {
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.graph-node') && 
                 !e.target.closest('.right-panel') && 
+                !e.target.closest('.properties-panel') &&
                 !e.target.closest('.scene-node')) {
                 editorState.selectNode(null);
             }
@@ -50,7 +50,7 @@ export class NodeGraph {
                        data-node-id="${node.id}"
                        data-node-type="${node.type}">
                         <rect class="node-body" width="120" height="80" rx="4" />
-                        <text class="node-title" x="60" y="20">${node.name}</text>
+                        <text class="node-title" x="60" y="20">${node.name}${this.getLoadingIndicator(node)}</text>
                         <text class="node-type" x="60" y="35">${node.type}</text>
                         ${this.hasInput(node.type) ? '<circle class="node-input" cx="5" cy="40" r="4" />' : ''}
                         ${this.hasOutput(node.type) ? '<circle class="node-output" cx="115" cy="40" r="4" />' : ''}
@@ -69,11 +69,11 @@ export class NodeGraph {
     }
     
     hasInput(type) {
-        return ['Shader', 'Blend', 'Feedback'].includes(type);
+        return ['Shader', 'Blend', 'Feedback', 'Grayscale', 'Blur', 'LensDistortion'].includes(type);
     }
     
     hasOutput(type) {
-        return ['Texture', 'Video', 'Canvas', 'Shader', 'Blend', 'Feedback'].includes(type);
+        return ['Texture', 'Video', 'Canvas', 'Shader', 'Blend', 'Feedback', 'Grayscale', 'Blur', 'LensDistortion'].includes(type);
     }
     
     renderConnections() {
@@ -116,7 +116,9 @@ export class NodeGraph {
                 if (nodeData) {
                     editorState.selectNode(nodeId);
                     
-                    if (nodeData.type === 'Shader' || nodeData.type === 'Feedback') {
+                    if (nodeData.type === 'Shader' || nodeData.type === 'Feedback' || 
+                        nodeData.type === 'Grayscale' || nodeData.type === 'Blur' || 
+                        nodeData.type === 'LensDistortion') {
                         window.toggleShaderPanel?.();
                     } else if (nodeData.type === 'Canvas') {
                         window.toggleCanvasEditor?.();
@@ -276,7 +278,6 @@ export class NodeGraph {
     
     resetZoom() {
         // Placeholder for zoom functionality
-        console.log('Reset zoom');
     }
     
     updateOutputDropdown() {
@@ -365,9 +366,7 @@ export class NodeGraph {
                 
                 // Create the connection
                 if (editorState.connectNodes(this.connectionStart.nodeId, toNodeId)) {
-                    console.log('Connection created successfully');
                 } else {
-                    console.log('Failed to create connection');
                 }
                 
                 this.endConnectionDragging();
@@ -428,5 +427,19 @@ export class NodeGraph {
             inputPort.setAttribute('r', '4');
             inputPort.style.fill = '';
         });
+    }
+    
+    getLoadingIndicator(node) {
+        if (!node.loadingState) return '';
+        
+        switch (node.loadingState) {
+            case 'loading':
+                return ' ⏳';
+            case 'error':
+                return ' ❌';
+            case 'loaded':
+            default:
+                return '';
+        }
     }
 }
