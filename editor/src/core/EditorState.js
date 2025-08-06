@@ -10,6 +10,12 @@ export class EditorState {
     this.outputNode = null;
     this.minigl = null; // Will be initialized with miniGL instance
     this.miniglNodes = new Map(); // Maps editor node IDs to miniGL nodes
+    
+    // Curated list of 24 Picsum image IDs that work well
+    this.picsumImageIds = [
+      0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+      20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+    ];
 
     // Bind methods
     this.addNode = this.addNode.bind(this);
@@ -17,6 +23,13 @@ export class EditorState {
     this.selectNode = this.selectNode.bind(this);
     this.connectNodes = this.connectNodes.bind(this);
     this.updateUI = this.updateUI.bind(this);
+  }
+
+  // Get a random Picsum URL from our curated list
+  getRandomPicsumUrl() {
+    const randomIndex = Math.floor(Math.random() * this.picsumImageIds.length);
+    const imageId = this.picsumImageIds[randomIndex];
+    return `https://picsum.photos/id/${imageId}/800/600`;
   }
 
   // Initialize with miniGL instance
@@ -91,6 +104,8 @@ export class EditorState {
       fontSize: type === "Text" ? 24 : undefined,
       fontFamily: type === "Text" ? "Arial" : undefined,
       fontColor: type === "Text" ? "#ffffff" : undefined,
+      posX: type === "Text" ? 0 : undefined,
+      posY: type === "Text" ? 0 : undefined,
     };
 
     this.nodes.set(id, node);
@@ -118,6 +133,17 @@ export class EditorState {
       }
     }
 
+    // Start the render loop if a shader node is added
+    if (this.minigl && (type === 'Shader' || type === 'Feedback' || type === 'Grayscale' || 
+                        type === 'Blur' || type === 'LensDistortion' || type === 'Blend')) {
+      if (this.minigl.start) {
+        this.minigl.start();
+      }
+    }
+
+    // Auto-select the new node to show it in properties panel
+    this.selectNode(node.id);
+
     this.updateUI();
     return node;
   }
@@ -134,9 +160,8 @@ export class EditorState {
       case "Texture":
         // Generate random image URL if no URL is provided
         if (!editorNode.url) {
-          const randomId = Math.floor(Math.random() * 1000) + 1;
-          // Use Lorem Picsum which has proper CORS headers
-          editorNode.url = `https://picsum.photos/800/600?random=${randomId}`;
+          // Use our curated list of Picsum images
+          editorNode.url = this.getRandomPicsumUrl();
         }
 
         // Use canvas dimensions for texture nodes by default
@@ -266,13 +291,23 @@ export class EditorState {
             const lines = text.split("\n");
             const lineHeight = (editorNode.fontSize || 24) * 1.2;
 
-            // Calculate starting Y position to center the text block
+            // Calculate position based on posX and posY (-1 to 1 range)
+            const posX = editorNode.posX || 0;
+            const posY = editorNode.posY || 0;
+            
+            // Convert normalized coordinates to pixel coordinates
+            // posX: -1 = left edge, 0 = center, 1 = right edge
+            // posY: -1 = top edge, 0 = center, 1 = bottom edge
+            const centerX = width / 2 + (posX * width / 2);
+            const centerY = height / 2 + (posY * height / 2);
+            
+            // Calculate starting Y position for the text block
             const totalHeight = lines.length * lineHeight;
-            const startY = height / 2 - totalHeight / 2 + lineHeight / 2;
+            const startY = centerY - totalHeight / 2 + lineHeight / 2;
 
-            // Draw each line centered
+            // Draw each line centered at the calculated position
             lines.forEach((line, index) => {
-              const x = width / 2;
+              const x = centerX;
               const y = startY + index * lineHeight;
               ctx.fillText(line, x, y);
             });
@@ -695,8 +730,8 @@ void main() {
     float aspect = glResolution.x / glResolution.y;
     uv.x *= aspect;
     
-    // Simple gradient pattern
-    vec3 color = vec3(glUV.x, glUV.y, 0.5 + 0.5 * sin(glTime));
+    // Simple gradient pattern with slower animation
+    vec3 color = vec3(glUV.x, glUV.y, 0.5 + 0.5 * sin(glTime * 0.01));
     
     fragColor = vec4(color, 1.0);
 }`,
@@ -720,7 +755,7 @@ void main() {
     uv.x *= aspect;
     
     // Animate red circle up and down with speed control (scale uSpeed to reasonable range)
-    float yOffset = sin(glTime * 0.001 * (uSpeed * 5.0)) * 0.3;
+    float yOffset = sin(glTime * 0.01 * (uSpeed * 5.0)) * 0.3;
     vec2 circleCenter = vec2(0.0, yOffset);
     
     float radius = 0.4;
@@ -828,7 +863,6 @@ ctx.fillRect(0, 0, width, height);`;
     const icons = {
       Texture: "🖼️",
       Text: "📝",
-      Canvas: "📊",
       Shader: "⚡",
       Blend: "🎨",
       Feedback: "🔄",
@@ -855,7 +889,6 @@ ctx.fillRect(0, 0, width, height);`;
     return [
       "Texture",
       "Text",
-      "Canvas",
       "Shader",
       "Blend",
       "Feedback",

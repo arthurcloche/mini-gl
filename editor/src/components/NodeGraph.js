@@ -73,7 +73,7 @@ export class NodeGraph {
     }
     
     hasOutput(type) {
-        return ['Texture', 'Video', 'Canvas', 'Shader', 'Blend', 'Feedback', 'Grayscale', 'Blur', 'LensDistortion'].includes(type);
+        return ['Texture', 'Video', 'Text', 'Shader', 'Blend', 'Feedback', 'Grayscale', 'Blur', 'LensDistortion'].includes(type);
     }
     
     renderConnections() {

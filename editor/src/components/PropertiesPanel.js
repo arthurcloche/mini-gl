@@ -82,20 +82,15 @@ export class PropertiesPanel {
                         ${node.loadingState === 'loading' ? 'disabled' : ''}>
                 </div>
                 ${node.loadingState === 'error' ? '<div class="property-item" style="color: #ff6b6b; font-size: 11px;">❌ Failed to load image. This may be a CORS issue if using an external URL. Try Lorem Picsum or upload a local file.</div>' : ''}
-                <div class="property-item info-box" style="background: rgba(66, 153, 225, 0.1); padding: 8px; border-radius: 4px; font-size: 11px; color: #8bb4ff; margin-top: 8px;">
-                    <strong>💡 Supported services:</strong><br>
-                    • Lorem Picsum (picsum.photos)<br>
-                    • Placeholder.com<br>
-                    • Local files (upload below)<br>
-                    • Data URLs
-                </div>
+                ${node.loadingState === 'loading' ? '<div class="property-item" style="color: #4a90e2; font-size: 10px; opacity: 0.8;">⏳ Wait for image to load. The hourglass will disappear when ready.</div>' : ''}
+                ${node.loadingState === 'error' ? '' : node.loadingState !== 'loading' ? '<div class="property-item" style="color: #51cf66; font-size: 10px; opacity: 0.8;">✓ Image loaded successfully</div>' : ''}
                 <div class="property-item">
-                    <div class="button-row">
+                    <div style="display: flex; gap: 8px;">
                         <input type="file" class="file-input" accept="image/*" style="display: none;" data-node-id="${
                           node.id
                         }">
-                        <button class="upload-btn">📁 Upload File</button>
-                        <button class="random-btn">🎲 Random</button>
+                        <button class="control-btn upload-btn" style="flex: 1; padding: 6px 12px; background: #2a2a3a; border: 1px solid #3a3a4a; border-radius: 4px; color: #888; font-size: 11px; cursor: pointer; transition: all 0.2s;">Upload</button>
+                        <button class="control-btn random-btn" style="flex: 1; padding: 6px 12px; background: #2a2a3a; border: 1px solid #3a3a4a; border-radius: 4px; color: #888; font-size: 11px; cursor: pointer; transition: all 0.2s;">Random</button>
                     </div>
                 </div>
                 <div class="property-item">
@@ -175,8 +170,8 @@ export class PropertiesPanel {
       const randomBtn = container.querySelector(".random-btn");
       if (randomBtn) {
         randomBtn.addEventListener("click", () => {
-          const randomId = Math.floor(Math.random() * 1000) + 1;
-          const randomUrl = `https://source.unsplash.com/800x600/?random&sig=${randomId}`;
+          // Use the curated list from EditorState
+          const randomUrl = editorState.getRandomPicsumUrl();
           if (urlInput) {
             urlInput.value = randomUrl;
             urlInput.dispatchEvent(new Event("change"));
@@ -399,20 +394,22 @@ Line breaks are supported"
             </div>
             
             <div class="property-group">
-                <h4>Canvas Settings</h4>
+                <h4>Position</h4>
                 <div class="property-item">
-                    <label>Width</label>
-                    <input type="number" class="number-input text-width" 
+                    <label>Position X</label>
+                    <input type="range" class="slider text-pos-x" 
                         value="${
-                          node.width || 512
-                        }" min="64" max="4096" step="64">
+                          node.posX || 0
+                        }" min="-1" max="1" step="0.01">
+                    <span class="value">${(node.posX || 0).toFixed(2)}</span>
                 </div>
                 <div class="property-item">
-                    <label>Height</label>
-                    <input type="number" class="number-input text-height" 
+                    <label>Position Y</label>
+                    <input type="range" class="slider text-pos-y" 
                         value="${
-                          node.height || 512
-                        }" min="64" max="4096" step="64">
+                          node.posY || 0
+                        }" min="-1" max="1" step="0.01">
+                    <span class="value">${(node.posY || 0).toFixed(2)}</span>
                 </div>
             </div>
         `;
@@ -423,8 +420,8 @@ Line breaks are supported"
       const fontSizeSlider = container.querySelector(".font-size-slider");
       const fontFamilySelect = container.querySelector(".font-family-select");
       const fontColorPicker = container.querySelector(".font-color-picker");
-      const widthInput = container.querySelector(".text-width");
-      const heightInput = container.querySelector(".text-height");
+      const posXSlider = container.querySelector(".text-pos-x");
+      const posYSlider = container.querySelector(".text-pos-y");
 
       // Text content handler
       if (textContent) {
@@ -479,22 +476,32 @@ Line breaks are supported"
         });
       }
 
-      // Size handlers
-      if (widthInput) {
-        widthInput.addEventListener("change", (e) => {
+      // Position handlers
+      if (posXSlider) {
+        posXSlider.addEventListener("input", (e) => {
           const currentNode = editorState.getNode(node.id);
           if (currentNode) {
-            currentNode.width = parseInt(e.target.value);
+            currentNode.posX = parseFloat(e.target.value);
+            // Update slider value display
+            const valueSpan = container.querySelector(
+              ".text-pos-x + .value"
+            );
+            if (valueSpan) valueSpan.textContent = currentNode.posX.toFixed(2);
             this.updateTextNode(currentNode);
           }
         });
       }
 
-      if (heightInput) {
-        heightInput.addEventListener("change", (e) => {
+      if (posYSlider) {
+        posYSlider.addEventListener("input", (e) => {
           const currentNode = editorState.getNode(node.id);
           if (currentNode) {
-            currentNode.height = parseInt(e.target.value);
+            currentNode.posY = parseFloat(e.target.value);
+            // Update slider value display
+            const valueSpan = container.querySelector(
+              ".text-pos-y + .value"
+            );
+            if (valueSpan) valueSpan.textContent = currentNode.posY.toFixed(2);
             this.updateTextNode(currentNode);
           }
         });
@@ -602,42 +609,15 @@ Line breaks are supported"
                 <div class="property-item">
                     <label>Mode</label>
                     <select class="dropdown blend-mode-select">
-                        <option value="normal" ${
-                          node.blendMode === "normal" ? "selected" : ""
-                        }>Normal</option>
-                        <option value="multiply" ${
-                          node.blendMode === "multiply" ? "selected" : ""
-                        }>Multiply</option>
                         <option value="screen" ${
                           node.blendMode === "screen" ? "selected" : ""
                         }>Screen</option>
+                        <option value="multiply" ${
+                          node.blendMode === "multiply" ? "selected" : ""
+                        }>Multiply</option>
                         <option value="overlay" ${
                           node.blendMode === "overlay" ? "selected" : ""
                         }>Overlay</option>
-                        <option value="soft-light" ${
-                          node.blendMode === "soft-light" ? "selected" : ""
-                        }>Soft Light</option>
-                        <option value="hard-light" ${
-                          node.blendMode === "hard-light" ? "selected" : ""
-                        }>Hard Light</option>
-                        <option value="color-dodge" ${
-                          node.blendMode === "color-dodge" ? "selected" : ""
-                        }>Color Dodge</option>
-                        <option value="color-burn" ${
-                          node.blendMode === "color-burn" ? "selected" : ""
-                        }>Color Burn</option>
-                        <option value="darken" ${
-                          node.blendMode === "darken" ? "selected" : ""
-                        }>Darken</option>
-                        <option value="lighten" ${
-                          node.blendMode === "lighten" ? "selected" : ""
-                        }>Lighten</option>
-                        <option value="difference" ${
-                          node.blendMode === "difference" ? "selected" : ""
-                        }>Difference</option>
-                        <option value="exclusion" ${
-                          node.blendMode === "exclusion" ? "selected" : ""
-                        }>Exclusion</option>
                     </select>
                 </div>
             </div>
@@ -1128,6 +1108,7 @@ Line breaks are supported"
         `;
   }
 
+
   toggleDocumentation() {
     const propertiesContent = document.querySelector(".properties-content");
     if (!propertiesContent) return;
@@ -1150,7 +1131,7 @@ Line breaks are supported"
 
   initializePropertyInteractions() {
     // Collapsible headers are handled by UIManager
-
+    
     // Add uniform button
     const addUniformBtn = document.querySelector(".add-uniform-btn");
     if (addUniformBtn) {

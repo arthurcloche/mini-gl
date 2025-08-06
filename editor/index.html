@@ -28,59 +28,56 @@
                 <div class="palette-content">
                     <!-- Source Nodes -->
                     <div class="node-category">
+                        <h4 style="color: #4fc3f7; margin-bottom: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Textures</h4>
                         <div class="node-item" draggable="true" data-node-type="Texture">
-                            <span class="node-icon">🖼️</span>
+                            <span class="node-dot" style="background-color: #4fc3f7; width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>
                             <span class="node-name">Texture</span>
-                            <button class="add-node-btn" title="Add node">+</button>
-                        </div>
-                        <div class="node-item" draggable="true" data-node-type="Canvas">
-                            <span class="node-icon">📊</span>
-                            <span class="node-name">Canvas</span>
-                            <button class="add-node-btn" title="Add node">+</button>
+                            <button class="add-node-btn" title="Add node" style="padding: 2px 8px; font-size: 11px;">Add</button>
                         </div>
                         <div class="node-item" draggable="true" data-node-type="Text">
-                            <span class="node-icon">📝</span>
+                            <span class="node-dot" style="background-color: #4fc3f7; width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>
                             <span class="node-name">Text</span>
-                            <button class="add-node-btn" title="Add node">+</button>
+                            <button class="add-node-btn" title="Add node" style="padding: 2px 8px; font-size: 11px;">Add</button>
                         </div>
                     </div>
                     
                     <!-- Processing Nodes -->
                     <div class="node-category">
+                        <h4 style="color: #ff8a65; margin-bottom: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Shaders</h4>
                         <div class="node-item" draggable="true" data-node-type="Shader">
-                            <span class="node-icon">⚡</span>
+                            <span class="node-dot" style="background-color: #ff8a65; width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>
                             <span class="node-name">Shader</span>
-                            <button class="add-node-btn" title="Add node">+</button>
+                            <button class="add-node-btn" title="Add node" style="padding: 2px 8px; font-size: 11px;">Add</button>
                         </div>
                         <div class="node-item" draggable="true" data-node-type="Blend">
-                            <span class="node-icon">🎨</span>
+                            <span class="node-dot" style="background-color: #ba68c8; width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>
                             <span class="node-name">Blend</span>
-                            <button class="add-node-btn" title="Add node">+</button>
+                            <button class="add-node-btn" title="Add node" style="padding: 2px 8px; font-size: 11px;">Add</button>
                         </div>
                         <div class="node-item" draggable="true" data-node-type="Feedback">
-                            <span class="node-icon">🔄</span>
+                            <span class="node-dot" style="background-color: #81c784; width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>
                             <span class="node-name">Feedback</span>
-                            <button class="add-node-btn" title="Add node">+</button>
+                            <button class="add-node-btn" title="Add node" style="padding: 2px 8px; font-size: 11px;">Add</button>
                         </div>
                     </div>
                     
                     <!-- Effect Nodes -->
                     <div class="node-category">
-                        <h4>Effects</h4>
+                        <h4 style="color: #90a4ae; margin-bottom: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Effects</h4>
                         <div class="node-item" draggable="true" data-node-type="Grayscale">
-                            <span class="node-icon">⚫</span>
+                            <span class="node-dot" style="background-color: #90a4ae; width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>
                             <span class="node-name">Grayscale</span>
-                            <button class="add-node-btn" title="Add node">+</button>
+                            <button class="add-node-btn" title="Add node" style="padding: 2px 8px; font-size: 11px;">Add</button>
                         </div>
                         <div class="node-item" draggable="true" data-node-type="Blur">
-                            <span class="node-icon">🌸</span>
+                            <span class="node-dot" style="background-color: #f06292; width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>
                             <span class="node-name">Blur</span>
-                            <button class="add-node-btn" title="Add node">+</button>
+                            <button class="add-node-btn" title="Add node" style="padding: 2px 8px; font-size: 11px;">Add</button>
                         </div>
                         <div class="node-item" draggable="true" data-node-type="LensDistortion">
-                            <span class="node-icon">🔮</span>
+                            <span class="node-dot" style="background-color: #9575cd; width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>
                             <span class="node-name">Lens Distortion</span>
-                            <button class="add-node-btn" title="Add node">+</button>
+                            <button class="add-node-btn" title="Add node" style="padding: 2px 8px; font-size: 11px;">Add</button>
                         </div>
                     </div>
                 </div>
@@ -95,6 +92,7 @@
                     <div class="preview-controls">
                         <button class="control-btn" id="pauseBtn" onclick="window.miniGLEditor?.togglePause()">pause</button>
                         <button class="control-btn" id="resetBtn" onclick="window.miniGLEditor?.resetTime()">reset</button>
+                        <button class="control-btn" id="snapshotBtn" onclick="window.miniGLEditor?.takeSnapshot()">snapshot</button>
                         <button class="control-btn record-btn" id="recordBtn">record</button>
                     </div>
                     <div class="preview-stats">
@@ -102,8 +100,30 @@
                         <div class="frame-indicator">Frame: <span id="frameCount">0</span></div>
                     </div>
                 </div>
+                <div class="force-render-container" style="
+                    text-align: center;
+                    padding: 8px;
+                    background: rgba(42, 74, 42, 0.3);
+                    border-bottom: 1px solid #333;
+                ">
+                    <span id="force-render-prompt" style="color: #888; font-size: 11px; cursor: pointer; text-decoration: underline;" onclick="window.miniGLEditor?.showForceRender()">Not seeing the preview?</span>
+                    <button id="force-render-btn" class="force-render-global-btn" onclick="window.miniGLEditor?.forceRenderAll()" style="
+                        display: none;
+                        padding: 4px 12px;
+                        background: #2a4a2a;
+                        color: #51cf66;
+                        border: 1px solid #51cf66;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        font-weight: 500;
+                        transition: all 0.2s;
+                    ">
+                        ⚡ Force Render
+                    </button>
+                </div>
                 <div class="preview-canvas">
-                    <canvas id="preview" width="512" height="512"></canvas>
+                    <canvas id="preview"></canvas>
                 </div>
             </div>
 
@@ -165,11 +185,10 @@
                     <div class="tabs">
                         <button class="tab-btn active" data-tab="settings">Settings</button>
                         <button class="tab-btn" data-tab="globalUniforms">Global</button>
-                        <button class="tab-btn" data-tab="export">Export</button>
                     </div>
                 </div>
 
-                <!-- Settings Tab -->
+                <!-- Settings & Export Tab (merged) -->
                 <div class="tab-content" id="settingsTab">
                     <div class="settings-content">
                         
@@ -184,41 +203,59 @@
                                 <input type="number" id="loopDuration" class="number-input" value="4" min="1" max="60" disabled>
                             </div>
                         </div>
+                        
+                        <div class="property-group">
+                            <h4>Export</h4>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <button class="export-btn json-export-btn" onclick="return false;" style="padding: 8px 16px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; color: #444; font-size: 12px; cursor: not-allowed; transition: all 0.2s; opacity: 0.5;" 
+                                    disabled>
+                                    🚧 Export Graph as JSON
+                                </button>
+                                <button class="export-btn snapshot-btn" id="snapshotBtn2" onclick="window.miniGLEditor?.takeSnapshot()" style="padding: 8px 16px; background: #2a3a4a; border: 1px solid #3a4a5a; border-radius: 4px; color: #8bb4ff; font-size: 12px; cursor: pointer; transition: all 0.2s;"
+                                    onmouseover="this.style.background='#3a4a5a'" 
+                                    onmouseout="this.style.background='#2a3a4a'">
+                                    Save Snapshot (PNG)
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="property-group">
+                            <h4>Video Recording</h4>
+                            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                <div style="flex: 1;">
+                                    <label style="font-size: 11px; color: #666; display: block; margin-bottom: 4px;">Duration</label>
+                                    <input type="number" id="recordDuration" class="number-input" value="5" min="1" max="30" style="width: 100%; padding: 6px; background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 3px; color: #888; font-size: 12px;">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="font-size: 11px; color: #666; display: block; margin-bottom: 4px;">Format</label>
+                                    <select class="dropdown" id="recordFormat" style="width: 100%; padding: 6px; background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 3px; color: #888; font-size: 12px;">
+                                        <option value="webm">WebM</option>
+                                        <option value="mp4">MP4</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="export-btn record-btn" id="recordBtn2" onclick="window.miniGLEditor?.toggleRecord()" style="width: 100%; padding: 8px 16px; background: #3a2a2a; border: 1px solid #4a3a3a; border-radius: 4px; color: #ff8a8a; font-size: 12px; cursor: pointer; transition: all 0.2s;"
+                                onmouseover="if(!this.classList.contains('recording')) this.style.background='#4a3a3a'" 
+                                onmouseout="if(!this.classList.contains('recording')) this.style.background='#3a2a2a'">
+                                Start Recording
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Global Uniforms Tab -->
                 <div class="tab-content" id="globalUniformsTab" style="display: none;">
-                    <div class="global-uniforms-content">
-                        <!-- Global uniforms populated by JavaScript -->
+                    <div class="global-uniforms-content" style="padding: 20px; text-align: center;">
+                        <div style="color: #ff8a65; font-size: 24px; margin-bottom: 10px;">🚧</div>
+                        <div style="color: #888; font-size: 14px; font-weight: 500;">Work in Progress</div>
+                        <div style="color: #666; font-size: 12px; margin-top: 8px;">This feature is coming soon!</div>
+                        <div style="color: #555; font-size: 11px; margin-top: 12px; line-height: 1.5;">
+                            Global uniforms will allow you to define shared variables<br>
+                            that multiple nodes can listen to and synchronize.
+                        </div>
                     </div>
                 </div>
 
-                <!-- Export Tab -->
-                <div class="tab-content" id="exportTab" style="display: none;">
-                    <div class="export-content">
-                        <div class="property-group">
-                            <h4>Export Options</h4>
-                            <button class="export-btn json-export-btn" onclick="exportGraphAsJSON()">Export as JSON</button>
-                        </div>
-                        
-                        <div class="property-group">
-                            <h4>Record Animation</h4>
-                            <div class="property-item">
-                                <label>Duration (s)</label>
-                                <input type="number" id="recordDuration" class="number-input" value="5" min="1" max="30">
-                            </div>
-                            <div class="property-item">
-                                <label>Format</label>
-                                <select class="dropdown">
-                                    <option value="gif">GIF</option>
-                                    <option value="mp4">MP4</option>
-                                    <option value="webm">WebM</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

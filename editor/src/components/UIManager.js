@@ -32,7 +32,6 @@ export class UIManager {
         const tabBtns = document.querySelectorAll('.tab-btn');
         const settingsTab = document.getElementById('settingsTab');
         const globalUniformsTab = document.getElementById('globalUniformsTab');
-        const exportTab = document.getElementById('exportTab');
         
         tabBtns.forEach(btn => {
             btn.addEventListener('click', function() {
@@ -45,7 +44,6 @@ export class UIManager {
                 // Hide all tabs
                 if (settingsTab) settingsTab.style.display = 'none';
                 if (globalUniformsTab) globalUniformsTab.style.display = 'none';
-                if (exportTab) exportTab.style.display = 'none';
                 
                 // Show selected tab
                 switch(tabName) {
@@ -54,9 +52,6 @@ export class UIManager {
                         break;
                     case 'globalUniforms':
                         if (globalUniformsTab) globalUniformsTab.style.display = 'block';
-                        break;
-                    case 'export':
-                        if (exportTab) exportTab.style.display = 'block';
                         break;
                 }
             });
@@ -138,35 +133,12 @@ export class UIManager {
             });
         }
         
-        // Record button
+        // Record button - delegate to main app
         const recordBtn = document.getElementById('recordBtn');
         if (recordBtn) {
             recordBtn.addEventListener('click', () => {
-                if (this.isRecording) {
-                    // Stop recording
-                    this.isRecording = false;
-                    recordBtn.classList.remove('recording');
-                    recordBtn.textContent = 'record';
-                } else {
-                    // Start recording
-                    this.isRecording = true;
-                    recordBtn.classList.add('recording');
-                    recordBtn.textContent = 'recording';
-                    
-                    // Switch to export tab
-                    const exportTab = document.querySelector('[data-tab="export"]');
-                    if (exportTab) exportTab.click();
-                    
-                    // Auto-stop after duration
-                    const recordDuration = document.getElementById('recordDuration');
-                    const duration = recordDuration ? parseInt(recordDuration.value) * 1000 : 5000;
-                    setTimeout(() => {
-                        if (this.isRecording) {
-                            this.isRecording = false;
-                            recordBtn.classList.remove('recording');
-                            recordBtn.textContent = 'record';
-                        }
-                    }, duration);
+                if (window.miniGLEditor && window.miniGLEditor.toggleRecord) {
+                    window.miniGLEditor.toggleRecord();
                 }
             });
         }
@@ -176,11 +148,24 @@ export class UIManager {
         if (outputDropdown) {
             outputDropdown.addEventListener('change', function() {
                 editorState.setOutputNode(this.value);
+                
+                // Force render all nodes when output changes to ensure everything is up to date
+                if (window.miniGLEditor && window.miniGLEditor.forceRenderAll) {
+                    // Small delay to let the output change take effect
+                    setTimeout(() => {
+                        window.miniGLEditor.forceRenderAll();
+                    }, 100);
+                }
             });
         }
     }
     
     startFrameCounter() {
+        // Clear any existing interval first
+        if (this.frameInterval) {
+            clearInterval(this.frameInterval);
+        }
+        
         this.frameInterval = setInterval(() => {
             this.frameCount++;
             const frameCountEl = document.getElementById('frameCount');
@@ -339,7 +324,7 @@ export class UIManager {
         
         sceneContent.innerHTML = `
             <div class="scene-node">
-                <span class="node-icon">📊</span>
+                <span class="node-icon">🖥️</span>
                 <span class="node-name editable" contenteditable="false">Main Output: ${outputNodeName}</span>
                 <div class="node-actions">
                     <button class="action-btn" title="Rename">✏️</button>
@@ -350,7 +335,7 @@ export class UIManager {
         ` + nodes.map(node => `
             <div class="scene-node indent ${editorState.selectedNode === node.id ? 'selected' : ''}" 
                 data-node-id="${node.id}">
-                <span class="node-icon">${this.getNodeIcon(node.type)}</span>
+                ${this.getNodeIcon(node.type)}
                 <span class="node-name editable" contenteditable="false">${node.name}</span>
                 <div class="node-actions">
                     <button class="action-btn" title="Rename">✏️</button>
@@ -581,16 +566,23 @@ export class UIManager {
     }
     
     getNodeIcon(type) {
-        const icons = {
-            'Texture': '🖼️',
-            'Video': '📹',
-            'Canvas': '📊',
-            'Shader': '⚡',
-            'Blend': '🎨',
-            'Feedback': '🔄',
-            'Blur': '🌸',
-            'Bloom': '✨'
+        const colors = this.getNodeColors();
+        const color = colors[type] || '#888';
+        return `<span class="node-dot" style="background-color: ${color}; width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>`;
+    }
+    
+    getNodeColors() {
+        return {
+            'Texture': '#4fc3f7',     // Light blue
+            'Text': '#4fc3f7',         // Light blue
+            'Video': '#4fc3f7',        // Light blue
+            'Shader': '#ff8a65',       // Orange
+            'Blend': '#ba68c8',        // Purple
+            'Feedback': '#81c784',     // Green
+            'Blur': '#f06292',         // Pink
+            'Bloom': '#ffb74d',        // Amber
+            'Grayscale': '#90a4ae',    // Blue-gray
+            'LensDistortion': '#9575cd' // Deep purple
         };
-        return icons[type] || '⚡';
     }
 }

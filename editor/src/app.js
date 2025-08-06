@@ -28,6 +28,18 @@ class MiniGLEditor {
             return false;
         }
         
+        // Set up canvas with proper DPR
+        const dpr = Math.max(2, window.devicePixelRatio || 1);
+        const displaySize = 512;
+        
+        // Set canvas pixel dimensions (actual resolution)
+        previewCanvas.width = displaySize * dpr;
+        previewCanvas.height = displaySize * dpr;
+        
+        // Set canvas display dimensions (CSS size)
+        previewCanvas.style.width = displaySize + 'px';
+        previewCanvas.style.height = displaySize + 'px';
+        
         
         // Initialize MiniGL bridge with the preview canvas
         miniGLBridge.canvas = previewCanvas;
@@ -53,6 +65,11 @@ class MiniGLEditor {
         window.toggleCanvasEditor = () => this.uiManager.toggleCanvasEditor();
         window.exportGraphAsJSON = () => this.exportGraph();
         window.matchWebGLCanvas = () => this.matchWebGLCanvas();
+        window.forceRenderAll = () => this.forceRenderAll();
+        window.showForceRender = () => this.showForceRender();
+        
+        // Make properties panel globally accessible
+        window.propertiesPanel = this.propertiesPanel;
         
         // Initialize with some default nodes ONLY if miniGL is available
         if (miniGLBridge.minigl) {
@@ -263,14 +280,71 @@ void main() {
                 miniGLBridge.minigl.stop();
                 miniGLBridge.isPaused = true;
                 if (pauseBtn) pauseBtn.textContent = 'play';
+                // Stop frame counter
+                if (this.uiManager.frameInterval) {
+                    clearInterval(this.uiManager.frameInterval);
+                    this.uiManager.frameInterval = null;
+                }
             } else {
                 // Resume
                 miniGLBridge.minigl.start();
                 miniGLBridge.isPaused = false;
                 if (pauseBtn) pauseBtn.textContent = 'pause';
+                // Restart frame counter
+                this.uiManager.startFrameCounter();
             }
         } catch (error) {
             console.error('Error in togglePause:', error);
+        }
+    }
+    
+    forceRenderAll() {
+        // Force render all shader nodes by recompiling them
+        const nodes = Array.from(editorState.nodes.values());
+        
+        nodes.forEach(node => {
+            // If it's a shader-type node, update and recompile the shader
+            if (node.type === 'Shader' || node.type === 'Feedback' || 
+                node.type === 'Grayscale' || node.type === 'Blur' || 
+                node.type === 'LensDistortion') {
+                // Use the same method as the run button - update via bridge
+                miniGLBridge.updateNodeProperty(node.id, 'shader', node.shader || editorState.getDefaultShader(node.type));
+            }
+        });
+        
+        // Force a render
+        if (miniGLBridge.minigl) {
+            // Ensure the render loop is running
+            if (miniGLBridge.minigl.start) {
+                miniGLBridge.minigl.start();
+            }
+            // Force immediate render
+            if (miniGLBridge.minigl.renderToScreen) {
+                miniGLBridge.minigl.renderToScreen();
+            }
+        }
+        
+        // Hide button and show prompt again after a delay
+        const prompt = document.getElementById('force-render-prompt');
+        const btn = document.getElementById('force-render-btn');
+        if (btn && prompt) {
+            // Visual feedback
+            btn.style.background = '#3a5a3a';
+            setTimeout(() => {
+                btn.style.display = 'none';
+                prompt.style.display = 'inline';
+            }, 500);
+        }
+    }
+    
+    showForceRender() {
+        // Show the force render button and hide the prompt
+        const prompt = document.getElementById('force-render-prompt');
+        const btn = document.getElementById('force-render-btn');
+        if (prompt && btn) {
+            prompt.style.display = 'none';
+            btn.style.display = 'inline-block';
+            btn.style.background = '#2a4a2a';
         }
     }
     
@@ -309,19 +383,190 @@ void main() {
         }
     }
     
+    takeSnapshot() {
+        // Try multiple ways to get the canvas
+        let canvas = document.getElementById('preview');
+        if (!canvas) {
+            canvas = document.querySelector('#preview');
+        }
+        if (!canvas) {
+            canvas = document.querySelector('canvas#preview');
+        }
+        if (!canvas && miniGLBridge.canvas) {
+            canvas = miniGLBridge.canvas;
+        }
+        
+        if (!canvas) {
+            console.error('Canvas not found for snapshot');
+            return;
+        }
+        
+        // Convert canvas to blob and download
+        canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `minigl-snapshot-${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Visual feedback on buttons
+            const btns = [document.getElementById('snapshotBtn'), document.getElementById('snapshotBtn2')];
+            btns.forEach(btn => {
+                if (btn) {
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Saved!';
+                    btn.style.background = '#2a4a2a';
+                    btn.style.color = '#51cf66';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '';
+                        btn.style.color = '';
+                    }, 1500);
+                }
+            });
+        }, 'image/png');
+    }
+    
+    toggleRecord() {
+        // Get both record buttons
+        const recordBtn1 = document.getElementById('recordBtn');
+        const recordBtn2 = document.getElementById('recordBtn2');
+        
+        if (this.uiManager.isRecording) {
+            // Stop recording
+            this.stopRecording();
+        } else {
+            // Start recording
+            this.startRecording();
+        }
+        
+        // Sync button states
+        [recordBtn1, recordBtn2].forEach(btn => {
+            if (btn) {
+                if (this.uiManager.isRecording) {
+                    btn.classList.add('recording');
+                    btn.textContent = btn.id === 'recordBtn2' ? 'Stop Recording' : 'recording';
+                    btn.style.background = '#4a2a2a';
+                    btn.style.color = '#ff6b6b';
+                } else {
+                    btn.classList.remove('recording');
+                    btn.textContent = btn.id === 'recordBtn2' ? 'Start Recording' : 'record';
+                    btn.style.background = '';
+                    btn.style.color = '';
+                }
+            }
+        });
+    }
+    
+    startRecording() {
+        // Try multiple ways to get the canvas
+        let canvas = document.getElementById('preview');
+        if (!canvas) {
+            canvas = document.querySelector('#preview');
+        }
+        if (!canvas) {
+            canvas = document.querySelector('canvas#preview');
+        }
+        if (!canvas && miniGLBridge.canvas) {
+            canvas = miniGLBridge.canvas;
+        }
+        
+        const format = document.getElementById('recordFormat')?.value || 'webm';
+        const duration = parseInt(document.getElementById('recordDuration')?.value || '5') * 1000;
+        
+        if (!canvas) {
+            console.error('Canvas not found for recording. Tried multiple selectors.');
+            return;
+        }
+        
+        this.uiManager.isRecording = true;
+        
+        // Simple recording using MediaRecorder API
+        const stream = canvas.captureStream(30); // 30 fps
+        const recorder = new MediaRecorder(stream, {
+            mimeType: format === 'webm' ? 'video/webm' : 'video/mp4'
+        });
+        
+        const chunks = [];
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: recorder.mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `minigl-recording-${Date.now()}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+        
+        recorder.start();
+        this.currentRecorder = recorder;
+        
+        // Auto-stop after duration
+        setTimeout(() => {
+            if (this.uiManager.isRecording) {
+                this.stopRecording();
+            }
+        }, duration);
+    }
+    
+    stopRecording() {
+        if (this.currentRecorder && this.currentRecorder.state === 'recording') {
+            this.currentRecorder.stop();
+            this.currentRecorder = null;
+        }
+        this.uiManager.isRecording = false;
+        
+        // Update button states directly without calling toggleRecord to avoid loop
+        const recordBtn1 = document.getElementById('recordBtn');
+        const recordBtn2 = document.getElementById('recordBtn2');
+        
+        [recordBtn1, recordBtn2].forEach(btn => {
+            if (btn) {
+                btn.classList.remove('recording');
+                btn.textContent = btn.id === 'recordBtn2' ? 'Start Recording' : 'record';
+                btn.style.background = '';
+                btn.style.color = '';
+            }
+        });
+    }
+    
 }
+
+// Create a temporary fallback for early calls
+window.miniGLEditor = {
+    takeSnapshot: () => {
+        console.log('Editor not yet initialized, waiting...');
+        setTimeout(() => {
+            if (window.miniGLEditor && window.miniGLEditor.takeSnapshot !== arguments.callee) {
+                window.miniGLEditor.takeSnapshot();
+            }
+        }, 500);
+    },
+    toggleRecord: () => {
+        console.log('Editor not yet initialized, waiting...');
+        setTimeout(() => {
+            if (window.miniGLEditor && window.miniGLEditor.toggleRecord !== arguments.callee) {
+                window.miniGLEditor.toggleRecord();
+            }
+        }, 500);
+    }
+};
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     const editor = new MiniGLEditor();
-    window.miniGLEditor = editor; // Make available globally for debugging
+    window.miniGLEditor = editor; // Replace temporary with real instance
     
     const success = await editor.initialize();
     if (!success) {
         console.error('Failed to initialize editor');
     }
-    
-    // Methods are already available on the editor instance
     
     // Make console available globally
     window.miniGLEditor.console = editor.console;

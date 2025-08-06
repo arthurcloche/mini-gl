@@ -16,14 +16,16 @@ export class MiniGLBridge {
             const miniGLClass = await this.loadMiniGL();
             
             if (miniGLClass) {
-                // Get device pixel ratio with minimum of 2
-                const dpr = Math.max(2, window.devicePixelRatio || 1);
+                // Canvas dimensions should already be set with DPR by app.js
+                // Use the existing canvas dimensions
+                const width = this.canvas.width;
+                const height = this.canvas.height;
                 
                 // Create MiniGL instance with canvas - enable antialiasing explicitly
                 this.minigl = new miniGLClass(this.canvas, { 
                     fps: 60,
-                    width: 512 * dpr,
-                    height: 512 * dpr,
+                    width: width,
+                    height: height,
                     contextOptions: {
                         antialias: true,
                         powerPreference: "high-performance",
@@ -371,11 +373,9 @@ export class MiniGLBridge {
                 if (node.type === 'Blend') {
                     // Update the blend mode uniform
                     const blendModes = {
-                        normal: 0,
+                        screen: 0,
                         multiply: 1,
-                        screen: 2,
-                        add: 3,
-                        overlay: 4
+                        overlay: 2
                     };
                     
                     const modeValue = blendModes[value] || 0;
@@ -499,10 +499,21 @@ export class MiniGLBridge {
                     
                     // Update miniGL resolution - resize() reads from canvas dimensions
                     if (this.minigl) {
+                        // Store the DPR-adjusted dimensions
+                        const actualWidth = this.canvas.width;
+                        const actualHeight = this.canvas.height;
+                        
                         // MiniGL's resize() method reads dimensions from the canvas
                         // and automatically resizes ALL nodes to match canvas dimensions
                         if (this.minigl.resize) {
                             this.minigl.resize();
+                        }
+                        
+                        // Ensure canvas dimensions weren't overridden
+                        if (this.canvas.width !== actualWidth || this.canvas.height !== actualHeight) {
+                            console.warn('Canvas dimensions were overridden by miniGL.resize(), restoring DPR dimensions');
+                            this.canvas.width = actualWidth;
+                            this.canvas.height = actualHeight;
                         }
                         
                         // Force immediate render after resize
@@ -547,11 +558,23 @@ export class MiniGLBridge {
         
         // Update miniGL resolution - resize() reads from canvas dimensions
         if (this.minigl) {
+            // Store the DPR-adjusted dimensions
+            const actualWidth = this.canvas.width;
+            const actualHeight = this.canvas.height;
+            
             // MiniGL's resize() method reads dimensions from the canvas
             // and automatically resizes ALL nodes to match canvas dimensions
             if (this.minigl.resize) {
                 this.minigl.resize();
             }
+            
+            // Ensure canvas dimensions weren't overridden
+            if (this.canvas.width !== actualWidth || this.canvas.height !== actualHeight) {
+                console.warn('Canvas dimensions were overridden by miniGL.resize(), restoring DPR dimensions');
+                this.canvas.width = actualWidth;
+                this.canvas.height = actualHeight;
+            }
+            
             
             // Force immediate render after resize
             if (this.minigl.renderToScreen) {
