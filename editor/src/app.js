@@ -536,6 +536,56 @@ void main() {
         });
     }
     
+    showHelp() {
+        const helpModal = document.getElementById('helpModal');
+        if (helpModal) {
+            helpModal.style.display = 'block';
+            // Add escape key listener
+            document.addEventListener('keydown', this.helpEscapeHandler = (e) => {
+                if (e.key === 'Escape') {
+                    this.hideHelp();
+                }
+            });
+        }
+    }
+    
+    hideHelp() {
+        const helpModal = document.getElementById('helpModal');
+        if (helpModal) {
+            helpModal.style.display = 'none';
+            // Remove escape key listener
+            if (this.helpEscapeHandler) {
+                document.removeEventListener('keydown', this.helpEscapeHandler);
+                this.helpEscapeHandler = null;
+            }
+        }
+    }
+    
+    showDocs() {
+        const docsModal = document.getElementById('docsModal');
+        if (docsModal) {
+            docsModal.style.display = 'block';
+            // Add escape key listener
+            document.addEventListener('keydown', this.docsEscapeHandler = (e) => {
+                if (e.key === 'Escape') {
+                    this.hideDocs();
+                }
+            });
+        }
+    }
+    
+    hideDocs() {
+        const docsModal = document.getElementById('docsModal');
+        if (docsModal) {
+            docsModal.style.display = 'none';
+            // Remove escape key listener
+            if (this.docsEscapeHandler) {
+                document.removeEventListener('keydown', this.docsEscapeHandler);
+                this.docsEscapeHandler = null;
+            }
+        }
+    }
+    
 }
 
 // Create a temporary fallback for early calls
@@ -553,6 +603,38 @@ window.miniGLEditor = {
         setTimeout(() => {
             if (window.miniGLEditor && window.miniGLEditor.toggleRecord !== arguments.callee) {
                 window.miniGLEditor.toggleRecord();
+            }
+        }, 500);
+    },
+    showHelp: () => {
+        console.log('Editor not yet initialized, waiting...');
+        setTimeout(() => {
+            if (window.miniGLEditor && window.miniGLEditor.showHelp !== arguments.callee) {
+                window.miniGLEditor.showHelp();
+            }
+        }, 500);
+    },
+    hideHelp: () => {
+        console.log('Editor not yet initialized, waiting...');
+        setTimeout(() => {
+            if (window.miniGLEditor && window.miniGLEditor.hideHelp !== arguments.callee) {
+                window.miniGLEditor.hideHelp();
+            }
+        }, 500);
+    },
+    showDocs: () => {
+        console.log('Editor not yet initialized, waiting...');
+        setTimeout(() => {
+            if (window.miniGLEditor && window.miniGLEditor.showDocs !== arguments.callee) {
+                window.miniGLEditor.showDocs();
+            }
+        }, 500);
+    },
+    hideDocs: () => {
+        console.log('Editor not yet initialized, waiting...');
+        setTimeout(() => {
+            if (window.miniGLEditor && window.miniGLEditor.hideDocs !== arguments.callee) {
+                window.miniGLEditor.hideDocs();
             }
         }, 500);
     }

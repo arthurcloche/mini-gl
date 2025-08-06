@@ -172,7 +172,10 @@
             <div class="properties-panel" id="nodeProperties">
                 <div class="panel-header">
                     <h3>Node Properties</h3>
-                    <button class="control-btn docs-btn" id="docsBtn">docs</button>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="control-btn help-btn" id="helpBtn" onclick="window.miniGLEditor?.showHelp()">help</button>
+                        <button class="control-btn docs-btn" id="docsBtn">docs</button>
+                    </div>
                 </div>
                 <div class="properties-content">
                     <!-- Properties populated by JavaScript -->
@@ -261,6 +264,352 @@
     </div>
 
     <!-- Console Panel (dynamically created) -->
+    
+    <!-- Docs Modal -->
+    <div id="docsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 8px; padding: 24px; max-width: 900px; max-height: 80vh; overflow-y: auto; color: #aaa;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: #8bb4ff; margin: 0;">📋 Quick Reference - Copy & Paste</h2>
+                <button onclick="window.miniGLEditor?.hideDocs()" style="background: none; border: none; color: #888; font-size: 24px; cursor: pointer;">✕</button>
+            </div>
+            
+            <div style="display: grid; gap: 24px;">
+                <!-- Shader Template -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 12px;">🎨 Basic Shader Template</h3>
+                    <pre style="background: #0a0a1a; padding: 12px; border-radius: 4px; font-size: 11px; line-height: 1.4; overflow-x: auto; border: 1px solid #2a2a3a;"><code>#version 300 es
+precision highp float;
+
+// Built-in uniforms
+uniform vec2 glResolution;
+uniform float glTime;
+uniform vec3 glMouse;
+
+// Built-in varyings
+in vec2 glCoord;
+in vec2 glUV;
+
+// Output
+out vec4 fragColor;
+
+void main() {
+    // Normalized coordinates (0-1)
+    vec2 uv = glUV;
+    
+    // Aspect-corrected centered coordinates (-1 to 1)
+    vec2 coord = (glCoord - glResolution * 0.5) / min(glResolution.x, glResolution.y);
+    
+    // Your shader code here
+    vec3 color = vec3(uv.x, uv.y, sin(glTime) * 0.5 + 0.5);
+    
+    fragColor = vec4(color, 1.0);
+}</code></pre>
+                </section>
+                
+                <!-- Built-in Uniforms -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 12px;">🔧 Built-in Uniforms & Varyings</h3>
+                    <div style="background: #0a0a1a; padding: 12px; border-radius: 4px; border: 1px solid #2a2a3a;">
+                        <pre style="font-size: 11px; line-height: 1.6; margin: 0;"><code>// Always available - no declaration needed
+uniform vec2 glResolution;  // Canvas size in pixels (e.g., 1024.0, 1024.0)
+uniform float glTime;       // Time in seconds * 0.01 (slow animation)
+uniform vec3 glMouse;       // xy: mouse position (0-1), z: click state (0/1)
+uniform float glFrame;      // Frame counter
+
+in vec2 glCoord;           // Fragment position in pixels
+in vec2 glUV;              // Normalized position (0.0 - 1.0)</code></pre>
+                    </div>
+                </section>
+                
+                <!-- Texture Sampling -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 12px;">🖼️ Texture Input Templates</h3>
+                    <div style="display: grid; gap: 12px;">
+                        <div>
+                            <h4 style="color: #4fc3f7; font-size: 12px; margin-bottom: 6px;">Single Texture Input:</h4>
+                            <pre style="background: #0a0a1a; padding: 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; margin: 0; border: 1px solid #2a2a3a;"><code>uniform sampler2D glTexture;
+
+void main() {
+    vec4 tex = texture(glTexture, glUV);
+    fragColor = tex;
+}</code></pre>
+                        </div>
+                        
+                        <div>
+                            <h4 style="color: #4fc3f7; font-size: 12px; margin-bottom: 6px;">Multiple Texture Inputs:</h4>
+                            <pre style="background: #0a0a1a; padding: 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; margin: 0; border: 1px solid #2a2a3a;"><code>uniform sampler2D uTextureA;
+uniform sampler2D uTextureB;
+
+void main() {
+    vec4 texA = texture(uTextureA, glUV);
+    vec4 texB = texture(uTextureB, glUV);
+    fragColor = mix(texA, texB, 0.5);
+}</code></pre>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Common Effects -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 12px;">✨ Common Effects</h3>
+                    <div style="display: grid; gap: 12px;">
+                        <div>
+                            <h4 style="color: #81c784; font-size: 12px; margin-bottom: 6px;">Distortion:</h4>
+                            <pre style="background: #0a0a1a; padding: 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; margin: 0; border: 1px solid #2a2a3a;"><code>vec2 distortedUV = glUV;
+distortedUV.x += sin(glUV.y * 10.0 + glTime) * 0.1;
+distortedUV.y += cos(glUV.x * 10.0 + glTime) * 0.1;
+vec4 tex = texture(glTexture, distortedUV);</code></pre>
+                        </div>
+                        
+                        <div>
+                            <h4 style="color: #81c784; font-size: 12px; margin-bottom: 6px;">Chromatic Aberration:</h4>
+                            <pre style="background: #0a0a1a; padding: 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; margin: 0; border: 1px solid #2a2a3a;"><code>float aberration = 0.005;
+float r = texture(glTexture, glUV + vec2(aberration, 0.0)).r;
+float g = texture(glTexture, glUV).g;
+float b = texture(glTexture, glUV - vec2(aberration, 0.0)).b;
+fragColor = vec4(r, g, b, 1.0);</code></pre>
+                        </div>
+                        
+                        <div>
+                            <h4 style="color: #81c784; font-size: 12px; margin-bottom: 6px;">Vignette:</h4>
+                            <pre style="background: #0a0a1a; padding: 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; margin: 0; border: 1px solid #2a2a3a;"><code>vec2 center = glUV - 0.5;
+float vignette = 1.0 - dot(center, center) * 2.0;
+vignette = clamp(vignette, 0.0, 1.0);
+fragColor.rgb *= vignette;</code></pre>
+                        </div>
+                        
+                        <div>
+                            <h4 style="color: #81c784; font-size: 12px; margin-bottom: 6px;">Pixelation:</h4>
+                            <pre style="background: #0a0a1a; padding: 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; margin: 0; border: 1px solid #2a2a3a;"><code>float pixels = 64.0;
+vec2 pixelUV = floor(glUV * pixels) / pixels;
+vec4 tex = texture(glTexture, pixelUV);</code></pre>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Custom Uniforms -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 12px;">🎛️ Custom Uniform Examples</h3>
+                    <div style="background: #0a0a1a; padding: 12px; border-radius: 4px; border: 1px solid #2a2a3a;">
+                        <pre style="font-size: 11px; line-height: 1.6; margin: 0;"><code>// Declare custom uniforms (add these to Properties panel)
+uniform float uSpeed;      // 0.0 - 1.0 from slider
+uniform float uIntensity;  // 0.0 - 1.0 from slider  
+uniform float uScale;      // 0.0 - 1.0 from slider
+uniform vec3 uColor;       // RGB color picker (future)
+
+// Example usage
+void main() {
+    float time = glTime * uSpeed;
+    vec2 scaledUV = (glUV - 0.5) * uScale + 0.5;
+    
+    float wave = sin(scaledUV.x * 10.0 + time) * uIntensity;
+    vec3 color = vec3(wave);
+    
+    fragColor = vec4(color, 1.0);
+}</code></pre>
+                    </div>
+                </section>
+                
+                <!-- Useful Functions -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 12px;">🔨 Useful Helper Functions</h3>
+                    <pre style="background: #0a0a1a; padding: 12px; border-radius: 4px; font-size: 11px; line-height: 1.4; margin: 0; border: 1px solid #2a2a3a;"><code>// Rotation matrix
+mat2 rotate2D(float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return mat2(c, -s, s, c);
+}
+
+// Simple noise
+float random(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+}
+
+// Smooth min (blend shapes)
+float smin(float a, float b, float k) {
+    float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+    return mix(b, a, h) - k * h * (1.0 - h);
+}
+
+// Distance field circle
+float circle(vec2 p, float r) {
+    return length(p) - r;
+}
+
+// Distance field box
+float box(vec2 p, vec2 size) {
+    vec2 d = abs(p) - size;
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}</code></pre>
+                </section>
+                
+                <!-- Color Utils -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 12px;">🎨 Color Utilities</h3>
+                    <pre style="background: #0a0a1a; padding: 12px; border-radius: 4px; font-size: 11px; line-height: 1.4; margin: 0; border: 1px solid #2a2a3a;"><code>// HSV to RGB conversion
+vec3 hsv2rgb(vec3 c) {
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+// RGB to grayscale
+float luminance(vec3 color) {
+    return dot(color, vec3(0.299, 0.587, 0.114));
+}
+
+// Contrast adjustment
+vec3 contrast(vec3 color, float amount) {
+    return (color - 0.5) * amount + 0.5;
+}</code></pre>
+                </section>
+                
+                <!-- Quick Tips -->
+                <section style="background: rgba(74, 144, 226, 0.1); padding: 12px; border-radius: 4px;">
+                    <h3 style="color: #4a90e2; font-size: 12px; margin-bottom: 8px;">💡 Quick Tips</h3>
+                    <ul style="font-size: 11px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                        <li>Use <code style="background: #2a2a3a; padding: 1px 3px; border-radius: 2px;">glUV</code> for texture coordinates (0-1 range)</li>
+                        <li>Use <code style="background: #2a2a3a; padding: 1px 3px; border-radius: 2px;">glCoord</code> for pixel-perfect effects</li>
+                        <li>Multiply <code style="background: #2a2a3a; padding: 1px 3px; border-radius: 2px;">glTime</code> to control animation speed</li>
+                        <li>Always output to <code style="background: #2a2a3a; padding: 1px 3px; border-radius: 2px;">fragColor</code> with alpha = 1.0</li>
+                        <li>Use <code style="background: #2a2a3a; padding: 1px 3px; border-radius: 2px;">clamp()</code> to keep values in 0-1 range</li>
+                        <li>Test shaders with the "test" button before running</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div id="helpModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 8px; padding: 24px; max-width: 800px; max-height: 80vh; overflow-y: auto; color: #aaa;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: #8bb4ff; margin: 0;">miniGL Editor - Quick Guide</h2>
+                <button onclick="window.miniGLEditor?.hideHelp()" style="background: none; border: none; color: #888; font-size: 24px; cursor: pointer;">✕</button>
+            </div>
+            
+            <div style="display: grid; gap: 20px;">
+                <!-- Overview -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 8px;">📖 Overview</h3>
+                    <p style="font-size: 12px; line-height: 1.6;">
+                        miniGL Editor is a node-based shader editor. Create visual effects by connecting nodes that represent textures, shaders, and effects. 
+                        The output is rendered in real-time to the preview canvas.
+                    </p>
+                </section>
+                
+                <!-- Workflow -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 8px;">🔄 Basic Workflow</h3>
+                    <ol style="font-size: 12px; line-height: 1.8; margin-left: 20px;">
+                        <li>Add nodes from the <strong>Node Palette</strong> (drag or click Add)</li>
+                        <li>Connect nodes in the <strong>Node Graph</strong> (drag from output to input)</li>
+                        <li>Edit shader code by double-clicking shader nodes</li>
+                        <li>Adjust properties in the <strong>Node Properties</strong> panel</li>
+                        <li>Set the output node using the dropdown above the graph</li>
+                    </ol>
+                </section>
+                
+                <!-- Panels -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 8px;">🎨 Panels Guide</h3>
+                    <div style="display: grid; gap: 12px; font-size: 12px;">
+                        <div>
+                            <strong style="color: #4fc3f7;">Scene Graph</strong> - Shows all nodes in your project. Click to select, use action buttons to rename/copy/delete.
+                        </div>
+                        <div>
+                            <strong style="color: #4fc3f7;">Node Palette</strong> - Available node types organized by category. Drag to graph or click Add.
+                        </div>
+                        <div>
+                            <strong style="color: #4fc3f7;">Preview</strong> - Real-time render output. Use controls to pause, reset, snapshot, or record.
+                        </div>
+                        <div>
+                            <strong style="color: #4fc3f7;">Node Graph</strong> - Visual node connections. Drag nodes to move, drag ports to connect.
+                        </div>
+                        <div>
+                            <strong style="color: #4fc3f7;">Properties</strong> - Settings for selected node. Sliders for uniforms, inputs for values.
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Node Types -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 8px;">🔲 Node Types</h3>
+                    <div style="display: grid; gap: 8px; font-size: 12px;">
+                        <div><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4fc3f7; margin-right: 6px;"></span><strong>Texture</strong> - Load images from URLs or files</div>
+                        <div><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4fc3f7; margin-right: 6px;"></span><strong>Text</strong> - Render text to texture</div>
+                        <div><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ff8a65; margin-right: 6px;"></span><strong>Shader</strong> - Custom GLSL fragment shader</div>
+                        <div><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ba68c8; margin-right: 6px;"></span><strong>Blend</strong> - Mix two inputs (screen/multiply/overlay)</div>
+                        <div><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #81c784; margin-right: 6px;"></span><strong>Feedback</strong> - Create trailing/echo effects</div>
+                        <div><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #90a4ae; margin-right: 6px;"></span><strong>Effects</strong> - Grayscale, Blur, Lens Distortion</div>
+                    </div>
+                </section>
+                
+                <!-- Shader Editing -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 8px;">✏️ Editing Shaders</h3>
+                    <div style="font-size: 12px; line-height: 1.6;">
+                        <p>Double-click any shader node to open the code editor. Shaders use GLSL ES 3.0.</p>
+                        <p style="margin-top: 8px;"><strong>Built-in uniforms:</strong></p>
+                        <ul style="margin-left: 20px; margin-top: 4px;">
+                            <li><code style="background: #2a2a3a; padding: 2px 4px; border-radius: 3px;">vec2 glResolution</code> - Canvas size in pixels</li>
+                            <li><code style="background: #2a2a3a; padding: 2px 4px; border-radius: 3px;">float glTime</code> - Time in seconds (multiplied by 0.01)</li>
+                            <li><code style="background: #2a2a3a; padding: 2px 4px; border-radius: 3px;">vec3 glMouse</code> - Mouse position (xy) and click state (z)</li>
+                            <li><code style="background: #2a2a3a; padding: 2px 4px; border-radius: 3px;">vec2 glCoord</code> - Fragment coordinate</li>
+                            <li><code style="background: #2a2a3a; padding: 2px 4px; border-radius: 3px;">vec2 glUV</code> - Normalized UV coordinates (0-1)</li>
+                        </ul>
+                    </div>
+                </section>
+                
+                <!-- Custom Uniforms -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 8px;">🎛️ Adding Custom Uniforms & Textures</h3>
+                    <div style="font-size: 12px; line-height: 1.6;">
+                        <p><strong>For custom uniforms:</strong></p>
+                        <ol style="margin-left: 20px; margin-top: 4px;">
+                            <li>Declare in your shader: <code style="background: #2a2a3a; padding: 2px 4px; border-radius: 3px;">uniform float myValue;</code></li>
+                            <li>Add to uniforms in Properties panel with matching name</li>
+                            <li>The slider will control the value (range 0-1 by default)</li>
+                        </ol>
+                        
+                        <p style="margin-top: 12px;"><strong>For texture inputs:</strong></p>
+                        <ol style="margin-left: 20px; margin-top: 4px;">
+                            <li>Declare sampler: <code style="background: #2a2a3a; padding: 2px 4px; border-radius: 3px;">uniform sampler2D myTexture;</code></li>
+                            <li>Connect a Texture node to your shader node</li>
+                            <li>Sample in shader: <code style="background: #2a2a3a; padding: 2px 4px; border-radius: 3px;">texture(myTexture, glUV)</code></li>
+                        </ol>
+                        
+                        <p style="margin-top: 12px; padding: 8px; background: rgba(255, 138, 101, 0.1); border-radius: 4px;">
+                            ⚠️ <strong>Important:</strong> Uniform and texture names in your shader code must match exactly with the names you define in the Properties panel.
+                        </p>
+                    </div>
+                </section>
+                
+                <!-- Tips -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 8px;">💡 Tips</h3>
+                    <ul style="font-size: 12px; line-height: 1.8; margin-left: 20px;">
+                        <li>Use <strong>Force Render</strong> if preview stops updating</li>
+                        <li>Click <strong>test</strong> in shader editor to check for compilation errors</li>
+                        <li>The <strong>console</strong> shows shader errors and logs</li>
+                        <li>Nodes auto-connect when dragged near compatible ports</li>
+                        <li>Use <strong>snapshot</strong> to save PNG images of your creation</li>
+                        <li>Record videos up to 30 seconds with the record button</li>
+                    </ul>
+                </section>
+                
+                <!-- Keyboard Shortcuts -->
+                <section>
+                    <h3 style="color: #ff8a65; font-size: 14px; margin-bottom: 8px;">⌨️ Keyboard Shortcuts</h3>
+                    <div style="font-size: 12px; line-height: 1.6;">
+                        <div><code style="background: #2a2a3a; padding: 2px 6px; border-radius: 3px;">Delete</code> - Delete selected node</div>
+                        <div><code style="background: #2a2a3a; padding: 2px 6px; border-radius: 3px;">Double-click</code> - Edit shader code</div>
+                        <div><code style="background: #2a2a3a; padding: 2px 6px; border-radius: 3px;">Escape</code> - Close shader editor</div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="src/app.js"></script>
 </body>

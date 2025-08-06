@@ -12,7 +12,9 @@ export class PropertiesPanel {
     if (docsBtn) {
       docsBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.toggleDocumentation();
+        if (window.miniGLEditor && window.miniGLEditor.showDocs) {
+          window.miniGLEditor.showDocs();
+        }
       });
     }
   }
