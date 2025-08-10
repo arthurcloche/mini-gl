@@ -1,11 +1,16 @@
 # TO DO
-[ ] Fix extension issues on iPhone
+[ ] Fix extension issues on iPhone : it was fixed importing all the extensions, now i need the cherry-pick the one i really need.
+[ ] Merge Editor from `node-editor` branch
 [ ] Add onBeforeCompile hook + hook to vertex shader
 [ ] Add 3D texture for gen envmap
 [x] Remove chunks dependencies 
 
 ## Docs
 https://webglreport.com/?v=2
+
+## Editor
+[ ] Test miniNodes 
+[ ] Port more nodes 
 
 ## Nodes
 [ ] Add FXAA to gl.output
