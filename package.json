@@ -1,0 +1,9 @@
+{
+  "name": "minigl-editor",
+  "version": "2.0.0",
+  "description": "Node-based shader editor for miniGL with Quick integration",
+  "scripts": {
+    "deploy": "quick deploy editor/quick-build minigl-editor --force"
+  },
+  "type": "module"
+}
